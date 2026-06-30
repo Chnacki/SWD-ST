@@ -87,21 +87,26 @@
       <div id="statusyEmpty" class="empty" style="display:none;">Brak aktywnego zdarzenia dla tego wozu.</div>
       <div id="statusyGridWrap" style="display:none;">
         <div style="font-size:12px;color:#607078;margin-top:4px;" id="statusyAddr"></div>
-        <div class="status-grid">
-          <div class="status-tile row-top" id="st-wyjazd" onclick="toggleStatus('wyjazd')">
+        <div class="status-row">
+          <div class="status-tile-h" id="st-wyjazd" onclick="toggleStatus('wyjazd')">
             <div class="label">WYJAZD</div>
             <div class="stamp" id="stamp-wyjazd"></div>
           </div>
-          <div class="status-tile row-bot" id="st-nawiguj" onclick="toggleNawiguj()">
-            <div class="label">NAWIGUJ</div>
-            <div class="stamp" id="stamp-nawiguj"></div>
-          </div>
-          <div class="status-tile col-v1" id="st-miejsce" onclick="toggleStatus('na_miejscu')">
-            <div class="label">NA<br>MIEJSCU</div>
+          <div class="status-tile-h" id="st-miejsce" onclick="toggleStatus('na_miejscu')">
+            <div class="label">NA MIEJSCE</div>
             <div class="stamp" id="stamp-miejsce"></div>
           </div>
-          <div class="status-tile col-v2" id="st-opanowana" onclick="toggleStatus('opanowana')">
-            <div class="label">SYTUACJA<br>OPANOWANA</div>
+          <div class="status-tile-h" id="st-lokalizacja" onclick="toggleLokalizacja()">
+            <div class="label">LOKALIZACJA<br>ZDARZENIA</div>
+            <div class="stamp" id="stamp-lokalizacja"></div>
+          </div>
+          <div class="status-tile-h" id="st-zakonczenie" onclick="toggleStatus('opanowana')">
+            <div class="label">ZAKOŃCZENIE<br>DZIAŁAŃ</div>
+            <div class="stamp" id="stamp-zakonczenie"></div>
+          </div>
+          <div class="status-tile-h" id="st-wbazie" onclick="toggleStatus('w_bazie')">
+            <div class="label">W BAZIE</div>
+            <div class="stamp" id="stamp-wbazie"></div>
           </div>
         </div>
       </div>
@@ -256,10 +261,9 @@ async function renderStatusForCurrentEvent() {
 
   paintStatusTile('st-wyjazd', 'stamp-wyjazd', disp.wyjazd, disp.wyjazd_at);
   paintStatusTile('st-miejsce', 'stamp-miejsce', disp.na_miejscu, disp.na_miejscu_at);
-  paintStatusTile('st-opanowana', null, disp.opanowana, null);
-
-  const nawTile = document.getElementById('st-nawiguj');
-  nawTile.classList.toggle('on', disp.nawiguj);
+  paintStatusTile('st-lokalizacja', 'stamp-lokalizacja', disp.nawiguj, disp.nawiguj_at);
+  paintStatusTile('st-zakonczenie', 'stamp-zakonczenie', disp.opanowana, disp.opanowana_at);
+  paintStatusTile('st-wbazie', 'stamp-wbazie', disp.w_bazie, disp.w_bazie_at);
 }
 
 function paintStatusTile(tileId, stampId, on, stampIso) {
@@ -274,17 +278,18 @@ async function toggleStatus(field) {
   if (!currentDispatchId) return;
   const { data: disp } = await sb.from('dispatches').select('*').eq('id', currentDispatchId).single();
   const newVal = !disp[field];
-  const update = { [field]: newVal };
-  if (field !== 'opanowana') update[field + '_at'] = newVal ? new Date().toISOString() : null;
+  const update = { [field]: newVal, [field + '_at']: newVal ? new Date().toISOString() : null };
   await sb.from('dispatches').update(update).eq('id', currentDispatchId);
   renderStatusForCurrentEvent();
 }
 
-async function toggleNawiguj() {
+async function toggleLokalizacja() {
   if (!currentDispatchId || !currentEventId) return;
   const { data: ev } = await sb.from('events').select('address').eq('id', currentEventId).single();
-  await sb.from('dispatches').update({ nawiguj: true }).eq('id', currentDispatchId);
-  if (ev && ev.address) {
+  const { data: disp } = await sb.from('dispatches').select('nawiguj').eq('id', currentDispatchId).single();
+  const newVal = !disp.nawiguj;
+  await sb.from('dispatches').update({ nawiguj: newVal, nawiguj_at: newVal ? new Date().toISOString() : null }).eq('id', currentDispatchId);
+  if (newVal && ev && ev.address) {
     window.open('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(ev.address), '_blank');
   }
   renderStatusForCurrentEvent();
