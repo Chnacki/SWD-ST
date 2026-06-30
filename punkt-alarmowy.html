@@ -47,7 +47,7 @@
     <select id="evCategory">
       <option value="P">P - Pożar</option>
       <option value="MZ">MZ - Miejscowe zagrożenie</option>
-      <option value="IZM">IZM - Izolowane Zdarzenie Medyczne</option>
+      <option value="IZM">IZM - Izolowane zdarzenie medyczne</option>
       <option value="CW">CW - Ćwiczenia</option>
     </select>
 
@@ -180,10 +180,12 @@ async function renderStatuses() {
   wrap.innerHTML = data.map(d => `
     <div class="event-card" style="cursor:default;">
       <div class="ev-head">${d.vehicles ? d.vehicles.name : 'Nieznany wóz'}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:6px;">
-        ${statusPill('Potwierdzenie', d.wyjazd, d.wyjazd_at)}
-        ${statusPill('Na miejscu', d.na_miejscu, d.na_miejscu_at)}
-        ${statusPill('Opanowana', d.opanowana, null)}
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:6px;margin-top:6px;">
+        ${statusPill('Wyjazd', d.wyjazd, d.wyjazd_at)}
+        ${statusPill('Na miejsce', d.na_miejscu, d.na_miejscu_at)}
+        ${statusPill('Lokalizacja zdarzenia', d.nawiguj, d.nawiguj_at)}
+        ${statusPill('Zakończenie działań', d.opanowana, d.opanowana_at)}
+        ${statusPill('W bazie', d.w_bazie, d.w_bazie_at)}
       </div>
     </div>
   `).join('');
