@@ -162,7 +162,10 @@ async function loadVehicles() {
       <td>${v.login}</td>
       <td>${v.password}</td>
       <td>${v.active ? 'Tak' : 'Nie'}</td>
-      <td><button class="btn secondary" style="padding:4px 8px;font-size:11px;width:auto;" onclick="toggleVehicle('${v.id}', ${v.active})">${v.active ? 'Dezaktywuj' : 'Aktywuj'}</button></td>
+      <td>
+        <button class="btn secondary" style="padding:4px 8px;font-size:11px;width:auto;" onclick="toggleVehicle('${v.id}', ${v.active})">${v.active ? 'Dezaktywuj' : 'Aktywuj'}</button>
+        <button class="btn secondary" style="padding:4px 8px;font-size:11px;width:auto;background:#c0392b;margin-left:4px;" onclick="deleteVehicle('${v.id}', '${v.name.replace(/'/g, "\\'")}')">Usuń</button>
+      </td>
     </tr>
   `).join('');
 }
@@ -193,6 +196,14 @@ async function addVehicle() {
 
 async function toggleVehicle(id, current) {
   await sb.from('vehicles').update({ active: !current }).eq('id', id);
+  loadVehicles();
+}
+
+async function deleteVehicle(id, name) {
+  const ok = confirm(`Usunąć wóz "${name}"? Usunie to też powiązane z nim zdarzenia/dyspozycje i wiadomości. Tej operacji nie da się cofnąć.`);
+  if (!ok) return;
+  const { error } = await sb.from('vehicles').delete().eq('id', id);
+  if (error) { alert('Błąd usuwania: ' + error.message); return; }
   loadVehicles();
 }
 
