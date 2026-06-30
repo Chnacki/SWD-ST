@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>SWD PSP - Terminal wozu</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+</head>
+<body>
+
+<div id="statusbar" class="statusbar">
+  <span id="sb-clock">--:--</span>
+  <span>SWD-ST</span>
+</div>
+
+<!-- ============ EKRAN LOGOWANIA ============ -->
+<div id="loginScreen" class="login-wrap">
+  <div class="login-card">
+    <h1>Terminal-ST</h1>
+    <p>Zaloguj się jako obsada wozu</p>
+    <label>Wóz</label>
+    <select id="loginVehicle"><option>Ładowanie...</option></select>
+    <label>Hasło</label>
+    <input type="password" id="loginPassword" placeholder="Hasło wozu">
+    <div style="margin-top:16px;">
+      <button class="btn" onclick="doLogin()">Połącz z SWD-ST</button>
+    </div>
+    <div id="loginError" class="error-text"></div>
+  </div>
+</div>
+
+<!-- ============ APLIKACJA ============ -->
+<div id="app" style="display:none;">
+  <div class="appbar">
+    <div>
+      <div class="title">Terminal-ST: <span style="color:#3ddc84">Połączono z SWD-ST</span></div>
+      <div class="sub"><span class="dot"></span><span id="vehicleName"></span></div>
+    </div>
+    <button class="logout" onclick="logout()">Wyloguj</button>
+  </div>
+
+  <div class="screen">
+
+    <!-- MENU GŁÓWNE -->
+    <div id="screen-menu">
+      <div class="tiles">
+        <div class="tile amber" onclick="openScreen('zdarzenia')">
+          <svg class="icon" viewBox="0 0 24 24" fill="#a6750c"><path d="M3 6h7l2 2h9v11H3z"/></svg>
+          <div class="label">Zdarzenia</div>
+        </div>
+        <div class="tile disabled">
+          <svg class="icon" viewBox="0 0 24 24" fill="#607078"><path d="M4 4h16v12H7l-3 3z"/></svg>
+          <div class="label">Komunikaty</div>
+        </div>
+        <div class="tile" onclick="openScreen('statusy')">
+          <svg class="icon" viewBox="0 0 24 24" fill="#2e7d32"><path d="M5 21V4l14 7-14 7z"/></svg>
+          <div class="label">Statusy</div>
+        </div>
+        <div class="tile disabled">
+          <svg class="icon" viewBox="0 0 24 24" fill="#607078"><circle cx="12" cy="13" r="4"/><path d="M3 7h4l2-3h6l2 3h4v13H3z" fill="none" stroke="#607078" stroke-width="1.5"/></svg>
+          <div class="label">Zrób zdjęcie</div>
+        </div>
+        <div class="tile disabled">
+          <svg class="icon" viewBox="0 0 24 24" fill="#607078"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/></svg>
+          <div class="label">Pokaż na mapie</div>
+        </div>
+        <div class="tile" onclick="openScreen('informacje')">
+          <svg class="icon" viewBox="0 0 24 24" fill="#1b8a5a"><circle cx="12" cy="12" r="10"/></svg>
+          <div class="label">Informacje</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ZDARZENIA -->
+    <div id="screen-zdarzenia" style="display:none;">
+      <div class="backlink" onclick="openScreen('menu')">‹ Wstecz</div>
+      <h2 style="font-size:15px;color:#14394d;">Zdarzenia dysponowane</h2>
+      <div id="eventsList"></div>
+    </div>
+
+    <!-- STATUSY -->
+    <div id="screen-statusy" style="display:none;">
+      <div class="backlink" onclick="openScreen('menu')">‹ Wstecz</div>
+      <h2 id="statusyTitle" style="font-size:15px;color:#14394d;">Statusy</h2>
+      <div id="statusyEmpty" class="empty" style="display:none;">Brak aktywnego zdarzenia dla tego wozu.</div>
+      <div id="statusyGridWrap" style="display:none;">
+        <div style="font-size:12px;color:#607078;margin-top:4px;" id="statusyAddr"></div>
+        <div class="status-grid">
+          <div class="status-tile row-top" id="st-wyjazd" onclick="toggleStatus('wyjazd')">
+            <div class="label">WYJAZD</div>
+            <div class="stamp" id="stamp-wyjazd"></div>
+          </div>
+          <div class="status-tile row-bot" id="st-nawiguj" onclick="toggleNawiguj()">
+            <div class="label">NAWIGUJ</div>
+            <div class="stamp" id="stamp-nawiguj"></div>
+          </div>
+          <div class="status-tile col-v1" id="st-miejsce" onclick="toggleStatus('na_miejscu')">
+            <div class="label">NA<br>MIEJSCU</div>
+            <div class="stamp" id="stamp-miejsce"></div>
+          </div>
+          <div class="status-tile col-v2" id="st-opanowana" onclick="toggleStatus('opanowana')">
+            <div class="label">SYTUACJA<br>OPANOWANA</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INFORMACJE -->
+    <div id="screen-informacje" style="display:none;">
+      <div class="backlink" onclick="openScreen('menu')">‹ Wstecz</div>
+      <h2 style="font-size:15px;color:#14394d;">Informacje z Komendy</h2>
+      <div id="messagesList"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let currentVehicle = null;       // {id, name}
+let currentEventId = null;       // event aktualnie pokazywany w Statusy
+let currentDispatchId = null;
+let realtimeChannel = null;
+
+// zegar paska statusu
+setInterval(() => {
+  const d = new Date();
+  document.getElementById('sb-clock').textContent =
+    String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}, 1000);
+
+function fmtStamp(iso) {
+  const d = new Date(iso);
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const yy = String(d.getFullYear()).slice(-2);
+  const hh = String(d.getHours()).padStart(2,'0');
+  const mi = String(d.getMinutes()).padStart(2,'0');
+  const ss = String(d.getSeconds()).padStart(2,'0');
+  return `${dd}-${mm}-${yy} / ${hh}:${mi}:${ss}`;
+}
+
+async function loadVehicleOptions() {
+  const sel = document.getElementById('loginVehicle');
+  const { data, error } = await sb.from('vehicles').select('id,name').eq('active', true).order('name');
+  if (error) { sel.innerHTML = '<option>Błąd ładowania</option>'; return; }
+  sel.innerHTML = data.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
+}
+
+async function doLogin() {
+  const vehicleId = document.getElementById('loginVehicle').value;
+  const pass = document.getElementById('loginPassword').value;
+  const errBox = document.getElementById('loginError');
+  errBox.textContent = '';
+  const { data, error } = await sb.from('vehicles').select('id,name,password').eq('id', vehicleId).single();
+  if (error || !data || data.password !== pass) {
+    errBox.textContent = 'Błędne hasło dla wybranego wozu.';
+    return;
+  }
+  currentVehicle = { id: data.id, name: data.name };
+  sessionStorage.setItem('swd_vehicle', JSON.stringify(currentVehicle));
+  enterApp();
+}
+
+function logout() {
+  sessionStorage.removeItem('swd_vehicle');
+  currentVehicle = null;
+  if (realtimeChannel) sb.removeChannel(realtimeChannel);
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+}
+
+function enterApp() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('vehicleName').textContent = currentVehicle.name;
+  openScreen('menu');
+  subscribeRealtime();
+}
+
+function openScreen(name) {
+  ['menu','zdarzenia','statusy','informacje'].forEach(s => {
+    document.getElementById('screen-' + s).style.display = (s === name) ? 'block' : 'none';
+  });
+  if (name === 'zdarzenia') loadEvents();
+  if (name === 'statusy' && !currentEventId) loadLatestActiveStatus();
+  else if (name === 'statusy') renderStatusForCurrentEvent();
+  if (name === 'informacje') loadMessages();
+}
+
+async function loadEvents() {
+  const wrap = document.getElementById('eventsList');
+  wrap.innerHTML = '<div class="empty">Ładowanie...</div>';
+  const { data, error } = await sb
+    .from('dispatches')
+    .select('id, event_id, events(id, number, category, name, address, description, status, created_at)')
+    .eq('vehicle_id', currentVehicle.id)
+    .order('created_at', { ascending: false });
+  if (error || !data || data.length === 0) {
+    wrap.innerHTML = '<div class="empty">Brak zdysponowanych zdarzeń.</div>';
+    return;
+  }
+  wrap.innerHTML = data.map(d => {
+    const e = d.events;
+    if (!e) return '';
+    return `
+    <div class="event-card" onclick="openEventStatus('${e.id}')">
+      <div class="ev-head"><span class="cat">(${e.category})</span> ${e.name} <span style="float:right;color:#607078;font-size:11px;">Zdarzenie ${e.number}</span></div>
+      <div class="event-cols">
+        <div><div class="lbl">Adres</div>${e.address}</div>
+        <div><div class="lbl">Opis</div>${e.description || '-'}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openEventStatus(eventId) {
+  currentEventId = eventId;
+  openScreen('statusy');
+}
+
+async function loadLatestActiveStatus() {
+  const { data, error } = await sb
+    .from('dispatches')
+    .select('id, event_id, events(id, status, created_at)')
+    .eq('vehicle_id', currentVehicle.id)
+    .order('created_at', { ascending: false });
+  if (error || !data) { showStatusEmpty(); return; }
+  const activeRow = data.find(d => d.events && d.events.status === 'aktywne');
+  if (!activeRow) { showStatusEmpty(); return; }
+  currentEventId = activeRow.event_id;
+  renderStatusForCurrentEvent();
+}
+
+function showStatusEmpty() {
+  document.getElementById('statusyEmpty').style.display = 'block';
+  document.getElementById('statusyGridWrap').style.display = 'none';
+}
+
+async function renderStatusForCurrentEvent() {
+  if (!currentEventId) { showStatusEmpty(); return; }
+  const { data: ev } = await sb.from('events').select('*').eq('id', currentEventId).single();
+  const { data: disp, error } = await sb
+    .from('dispatches')
+    .select('*')
+    .eq('event_id', currentEventId)
+    .eq('vehicle_id', currentVehicle.id)
+    .single();
+  if (error || !disp || !ev) { showStatusEmpty(); return; }
+  currentDispatchId = disp.id;
+  document.getElementById('statusyEmpty').style.display = 'none';
+  document.getElementById('statusyGridWrap').style.display = 'block';
+  document.getElementById('statusyTitle').textContent = `Statusy - (${ev.category}) ${ev.name}`;
+  document.getElementById('statusyAddr').textContent = 'Adres: ' + ev.address;
+
+  paintStatusTile('st-wyjazd', 'stamp-wyjazd', disp.wyjazd, disp.wyjazd_at);
+  paintStatusTile('st-miejsce', 'stamp-miejsce', disp.na_miejscu, disp.na_miejscu_at);
+  paintStatusTile('st-opanowana', null, disp.opanowana, null);
+
+  const nawTile = document.getElementById('st-nawiguj');
+  nawTile.classList.toggle('on', disp.nawiguj);
+}
+
+function paintStatusTile(tileId, stampId, on, stampIso) {
+  const tile = document.getElementById(tileId);
+  tile.classList.toggle('on', !!on);
+  if (stampId) {
+    document.getElementById(stampId).textContent = (on && stampIso) ? fmtStamp(stampIso) : '';
+  }
+}
+
+async function toggleStatus(field) {
+  if (!currentDispatchId) return;
+  const { data: disp } = await sb.from('dispatches').select('*').eq('id', currentDispatchId).single();
+  const newVal = !disp[field];
+  const update = { [field]: newVal };
+  if (field !== 'opanowana') update[field + '_at'] = newVal ? new Date().toISOString() : null;
+  await sb.from('dispatches').update(update).eq('id', currentDispatchId);
+  renderStatusForCurrentEvent();
+}
+
+async function toggleNawiguj() {
+  if (!currentDispatchId || !currentEventId) return;
+  const { data: ev } = await sb.from('events').select('address').eq('id', currentEventId).single();
+  await sb.from('dispatches').update({ nawiguj: true }).eq('id', currentDispatchId);
+  if (ev && ev.address) {
+    window.open('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(ev.address), '_blank');
+  }
+  renderStatusForCurrentEvent();
+}
+
+async function loadMessages() {
+  const wrap = document.getElementById('messagesList');
+  wrap.innerHTML = '<div class="empty">Ładowanie...</div>';
+  const { data, error } = await sb
+    .from('messages')
+    .select('*')
+    .or(`vehicle_id.eq.${currentVehicle.id},vehicle_id.is.null`)
+    .order('created_at', { ascending: false });
+  if (error || !data || data.length === 0) {
+    wrap.innerHTML = '<div class="empty">Brak wiadomości.</div>';
+    return;
+  }
+  wrap.innerHTML = data.map(m => `
+    <div class="msg-box">
+      ${m.content}
+      <div class="time">${fmtStamp(m.created_at)}${m.vehicle_id ? '' : ' · do wszystkich'}</div>
+    </div>`).join('');
+}
+
+function subscribeRealtime() {
+  realtimeChannel = sb.channel('woz-' + currentVehicle.id)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'dispatches' }, () => {
+      if (document.getElementById('screen-statusy').style.display === 'block') renderStatusForCurrentEvent();
+      if (document.getElementById('screen-zdarzenia').style.display === 'block') loadEvents();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => {
+      if (document.getElementById('screen-zdarzenia').style.display === 'block') loadEvents();
+      if (document.getElementById('screen-statusy').style.display === 'block') renderStatusForCurrentEvent();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
+      if (document.getElementById('screen-informacje').style.display === 'block') loadMessages();
+    })
+    .subscribe();
+}
+
+// start
+loadVehicleOptions();
+const saved = sessionStorage.getItem('swd_vehicle');
+if (saved) { currentVehicle = JSON.parse(saved); enterApp(); }
+</script>
+</body>
+</html>

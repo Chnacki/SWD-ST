@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>SWD PSP - Punkt Alarmowy</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+</head>
+<body>
+
+<div class="statusbar"><span id="sb-clock">--:--</span><span>SWD-ST · Punkt Alarmowy</span></div>
+
+<div class="appbar">
+  <div>
+    <div class="title">SWD PSP - Punkt Alarmowy</div>
+    <div class="sub"><span class="dot"></span>Połączono z bazą</div>
+  </div>
+</div>
+
+<div class="screen">
+
+  <!-- MENU -->
+  <div id="screen-menu">
+    <div class="tiles">
+      <div class="tile amber" onclick="openScreen('zadysponuj')">
+        <svg class="icon" viewBox="0 0 24 24" fill="#a6750c"><path d="M12 2 2 7l10 5 10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="#a6750c" fill="none" stroke-width="1.5"/></svg>
+        <div class="label">Zadysponuj</div>
+      </div>
+      <div class="tile" onclick="openScreen('statusy')">
+        <svg class="icon" viewBox="0 0 24 24" fill="#2e7d32"><path d="M5 21V4l14 7-14 7z"/></svg>
+        <div class="label">Pokaż statusy</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ZADYSPONUJ -->
+  <div id="screen-zadysponuj" style="display:none;">
+    <div class="backlink" onclick="openScreen('menu')">‹ Wstecz</div>
+    <h2 style="font-size:15px;color:#14394d;">Zadysponuj zdarzenie</h2>
+
+    <label>Wozy do wyboru</label>
+    <div class="checks" id="vehicleChecks"></div>
+
+    <label>Kategoria zdarzenia</label>
+    <select id="evCategory">
+      <option value="P">P - Pożar</option>
+      <option value="MZ">MZ - Miejscowe zagrożenie</option>
+      <option value="IZM">IZM - Inne zdarzenie miejscowe</option>
+      <option value="CW">CW - Czynności wątpliwe / fałszywy alarm</option>
+    </select>
+
+    <label>Nazwa zdarzenia</label>
+    <input type="text" id="evName" placeholder="np. Pożar sadzy w kominie">
+
+    <label>Adres</label>
+    <input type="text" id="evAddress" placeholder="Ulica, numer, miejscowość">
+
+    <label>Opis</label>
+    <textarea id="evDesc" placeholder="Dodatkowe informacje dla zadysponowanych wozów"></textarea>
+
+    <div style="margin-top:16px;">
+      <button class="btn" onclick="submitDispatch()">Zadysponuj</button>
+    </div>
+    <div id="dispatchMsg" style="margin-top:10px;font-size:13px;"></div>
+  </div>
+
+  <!-- POKAŻ STATUSY -->
+  <div id="screen-statusy" style="display:none;">
+    <div class="backlink" onclick="openScreen('menu')">‹ Wstecz</div>
+    <h2 style="font-size:15px;color:#14394d;">Statusy zdarzenia</h2>
+    <label>Zdarzenie</label>
+    <select id="eventSelect" onchange="renderStatuses()"></select>
+    <div id="statusList" style="margin-top:14px;"></div>
+  </div>
+
+</div>
+
+<script>
+let realtimeChannel = null;
+
+setInterval(() => {
+  const d = new Date();
+  document.getElementById('sb-clock').textContent =
+    String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}, 1000);
+
+function fmtStamp(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const yy = String(d.getFullYear()).slice(-2);
+  const hh = String(d.getHours()).padStart(2,'0');
+  const mi = String(d.getMinutes()).padStart(2,'0');
+  const ss = String(d.getSeconds()).padStart(2,'0');
+  return `${dd}-${mm}-${yy} / ${hh}:${mi}:${ss}`;
+}
+
+function openScreen(name) {
+  ['menu','zadysponuj','statusy'].forEach(s => {
+    document.getElementById('screen-' + s).style.display = (s === name) ? 'block' : 'none';
+  });
+  if (name === 'zadysponuj') loadVehicleChecks();
+  if (name === 'statusy') loadEventSelect();
+}
+
+async function loadVehicleChecks() {
+  const wrap = document.getElementById('vehicleChecks');
+  wrap.innerHTML = 'Ładowanie...';
+  const { data, error } = await sb.from('vehicles').select('id,name').eq('active', true).order('name');
+  if (error || !data) { wrap.innerHTML = 'Błąd ładowania wozów.'; return; }
+  wrap.innerHTML = data.map(v => `
+    <label class="chip"><input type="checkbox" value="${v.id}" class="veh-check"> ${v.name}</label>
+  `).join('');
+}
+
+async function submitDispatch() {
+  const msgBox = document.getElementById('dispatchMsg');
+  msgBox.textContent = '';
+  const checked = [...document.querySelectorAll('.veh-check:checked')].map(c => c.value);
+  const category = document.getElementById('evCategory').value;
+  const name = document.getElementById('evName').value.trim();
+  const address = document.getElementById('evAddress').value.trim();
+  const description = document.getElementById('evDesc').value.trim();
+
+  if (checked.length === 0 || !name || !address) {
+    msgBox.style.color = '#c0392b';
+    msgBox.textContent = 'Wybierz co najmniej jeden wóz oraz podaj nazwę i adres zdarzenia.';
+    return;
+  }
+
+  const { data: numberData, error: numErr } = await sb.rpc('next_event_number');
+  if (numErr) { msgBox.style.color = '#c0392b'; msgBox.textContent = 'Błąd numeracji zdarzenia: ' + numErr.message; return; }
+
+  const { data: ev, error: evErr } = await sb.from('events').insert({
+    number: numberData, category, name, address, description, status: 'aktywne'
+  }).select().single();
+  if (evErr) { msgBox.style.color = '#c0392b'; msgBox.textContent = 'Błąd zapisu zdarzenia: ' + evErr.message; return; }
+
+  const rows = checked.map(vid => ({ event_id: ev.id, vehicle_id: vid }));
+  const { error: dErr } = await sb.from('dispatches').insert(rows);
+  if (dErr) { msgBox.style.color = '#c0392b'; msgBox.textContent = 'Błąd dysponowania: ' + dErr.message; return; }
+
+  msgBox.style.color = '#2e7d32';
+  msgBox.textContent = `Zadysponowano - Zdarzenie ${ev.number}`;
+  document.getElementById('evName').value = '';
+  document.getElementById('evAddress').value = '';
+  document.getElementById('evDesc').value = '';
+  document.querySelectorAll('.veh-check:checked').forEach(c => c.checked = false);
+}
+
+async function loadEventSelect() {
+  const sel = document.getElementById('eventSelect');
+  const { data, error } = await sb.from('events').select('*').order('created_at', { ascending: false }).limit(50);
+  if (error || !data || data.length === 0) {
+    sel.innerHTML = '<option>Brak zdarzeń</option>';
+    document.getElementById('statusList').innerHTML = '<div class="empty">Brak zdarzeń do wyświetlenia.</div>';
+    return;
+  }
+  sel.innerHTML = data.map(e => `<option value="${e.id}">Zdarzenie ${e.number} - (${e.category}) ${e.name}${e.status === 'zakonczone' ? ' [zakończone]' : ''}</option>`).join('');
+  renderStatuses();
+  subscribeRealtime();
+}
+
+async function renderStatuses() {
+  const eventId = document.getElementById('eventSelect').value;
+  const wrap = document.getElementById('statusList');
+  if (!eventId) { wrap.innerHTML = ''; return; }
+  const { data, error } = await sb
+    .from('dispatches')
+    .select('*, vehicles(name)')
+    .eq('event_id', eventId)
+    .order('created_at');
+  if (error || !data || data.length === 0) {
+    wrap.innerHTML = '<div class="empty">Brak wozów przypisanych do tego zdarzenia.</div>';
+    return;
+  }
+  wrap.innerHTML = data.map(d => `
+    <div class="event-card" style="cursor:default;">
+      <div class="ev-head">${d.vehicles ? d.vehicles.name : 'Nieznany wóz'}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:6px;">
+        ${statusPill('Potwierdzenie', d.wyjazd, d.wyjazd_at)}
+        ${statusPill('Na miejscu', d.na_miejscu, d.na_miejscu_at)}
+        ${statusPill('Opanowana', d.opanowana, null)}
+      </div>
+    </div>
+  `).join('');
+}
+
+function statusPill(label, on, stamp) {
+  const bg = on ? '#43a047' : '#eceff1';
+  const color = on ? '#fff' : '#607078';
+  return `<div style="background:${bg};color:${color};border-radius:4px;padding:8px 4px;text-align:center;font-size:11px;font-weight:700;">
+    ${label}${on && stamp ? `<div style="font-weight:400;font-size:10px;margin-top:4px;">${fmtStamp(stamp)}</div>` : ''}
+  </div>`;
+}
+
+function subscribeRealtime() {
+  if (realtimeChannel) sb.removeChannel(realtimeChannel);
+  realtimeChannel = sb.channel('punkt-alarmowy')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'dispatches' }, () => {
+      if (document.getElementById('screen-statusy').style.display === 'block') renderStatuses();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => {
+      if (document.getElementById('screen-statusy').style.display === 'block') loadEventSelect();
+    })
+    .subscribe();
+}
+
+openScreen('menu');
+</script>
+</body>
+</html>
