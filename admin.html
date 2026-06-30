@@ -262,7 +262,7 @@ async function loadEvents() {
         <div><div class="lbl">Opis</div>${e.description || '-'}</div>
       </div>
       <div style="font-size:11px;color:#607078;">
-        ${(e.dispatches || []).map(d => `${d.vehicles ? d.vehicles.name : '?'}: ${d.wyjazd ? '✅ wyjazd' : '⬜ wyjazd'} ${d.na_miejscu ? '✅ na miejscu' : '⬜ na miejscu'} ${d.opanowana ? '✅ opanowana' : '⬜ opanowana'}`).join('<br>')}
+        ${(e.dispatches || []).map(d => `${d.vehicles ? d.vehicles.name : '?'}: ${d.wyjazd ? '✅' : '⬜'} wyjazd · ${d.na_miejscu ? '✅' : '⬜'} na miejscu · ${d.nawiguj ? '✅' : '⬜'} lokalizacja · ${d.opanowana ? '✅' : '⬜'} zakończenie · ${d.w_bazie ? '✅' : '⬜'} w bazie`).join('<br>')}
       </div>
       ${e.status === 'aktywne' ? `<div style="margin-top:8px;"><button class="btn secondary" style="width:auto;padding:6px 10px;font-size:11px;" onclick="closeEvent('${e.id}')">Zakończ zdarzenie</button></div>` : ''}
     </div>
