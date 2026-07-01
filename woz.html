@@ -348,20 +348,128 @@ function subscribeRealtime() {
 // RADIOTELEFON
 // ==========================================================
 const RADIO_CHANNELS = [
-  { num: "020", name: "POWIATOWY" },
-  { num: "004", name: "KRG 1" },
-  { num: "035", name: "KRG 3" },
-  { num: "039", name: "KRG 4" },
-  { num: "041", name: "KRG 5" },
-  { num: "046", name: "KRG 6" },
-  { num: "047", name: "KRG 7" },
-  { num: "049", name: "KRG 8" }
+  { num: "020", name: "POWIATOWY", key: "powiatowy" },
+  { num: "004", name: "KRG 1", key: "krg1" },
+  { num: "035", name: "KRG 3", key: "krg3" },
+  { num: "039", name: "KRG 4", key: "krg4" },
+  { num: "041", name: "KRG 5", key: "krg5" },
+  { num: "046", name: "KRG 6", key: "krg6" },
+  { num: "047", name: "KRG 7", key: "krg7" },
+  { num: "049", name: "KRG 8", key: "krg8" }
 ];
 let radioOn = false;
 let radioChannelIndex = 0;
 let radioPowerTimer = null;
 let radioLongPress = false;
 let radioTransmitting = false;
+
+// --- WebRTC / audio na żywo ---
+const radioClientId = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()));
+let radioLocalStream = null;
+let radioPeers = {};        // peerId -> { pc, audioEl }
+let radioSupaChannel = null; // aktywny kanał Supabase Realtime (sygnalizacja)
+
+async function radioEnsureMic() {
+  if (radioLocalStream) return true;
+  try {
+    radioLocalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    radioLocalStream.getAudioTracks().forEach(t => t.enabled = false); // domyślnie wyciszony, PTT odmutowuje
+    return true;
+  } catch (e) {
+    alert('Brak dostępu do mikrofonu - radio wymaga zgody przeglądarki na mikrofon.');
+    return false;
+  }
+}
+
+function radioGetOrCreatePeer(peerId) {
+  if (radioPeers[peerId]) return radioPeers[peerId].pc;
+  const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+  if (radioLocalStream) radioLocalStream.getTracks().forEach(t => pc.addTrack(t, radioLocalStream));
+  pc.onicecandidate = (e) => { if (e.candidate) radioSendSignal(peerId, { type: 'ice', candidate: e.candidate }); };
+  pc.ontrack = (e) => radioPlayRemote(peerId, e.streams[0]);
+  radioPeers[peerId] = { pc, audioEl: null };
+  return pc;
+}
+
+function radioPlayRemote(peerId, stream) {
+  const entry = radioPeers[peerId];
+  if (!entry) return;
+  if (!entry.audioEl) {
+    const audioEl = document.createElement('audio');
+    audioEl.autoplay = true;
+    document.body.appendChild(audioEl);
+    entry.audioEl = audioEl;
+  }
+  entry.audioEl.srcObject = stream;
+}
+
+function radioRemovePeer(peerId) {
+  const entry = radioPeers[peerId];
+  if (!entry) return;
+  entry.pc.close();
+  if (entry.audioEl) entry.audioEl.remove();
+  delete radioPeers[peerId];
+}
+
+function radioSendSignal(to, data) {
+  if (!radioSupaChannel) return;
+  radioSupaChannel.send({ type: 'broadcast', event: 'signal', payload: { to, from: radioClientId, data } });
+}
+
+async function radioHandleSignal(payload) {
+  if (payload.to !== radioClientId) return;
+  const { from, data } = payload;
+  const pc = radioGetOrCreatePeer(from);
+  if (data.type === 'offer') {
+    await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    radioSendSignal(from, { type: 'answer', sdp: answer });
+  } else if (data.type === 'answer') {
+    await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+  } else if (data.type === 'ice') {
+    try { await pc.addIceCandidate(data.candidate); } catch (e) {}
+  }
+}
+
+async function radioCreateOfferTo(peerId) {
+  const pc = radioGetOrCreatePeer(peerId);
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  radioSendSignal(peerId, { type: 'offer', sdp: offer });
+}
+
+async function radioLeaveChannel() {
+  Object.keys(radioPeers).forEach(radioRemovePeer);
+  if (radioSupaChannel) {
+    try { await radioSupaChannel.untrack(); } catch (e) {}
+    try { await sb.removeChannel(radioSupaChannel); } catch (e) {}
+    radioSupaChannel = null;
+  }
+}
+
+async function radioJoinChannel(channelKey) {
+  await radioLeaveChannel();
+  const ok = await radioEnsureMic();
+  if (!ok) return;
+  const channel = sb.channel('radio-' + channelKey, { config: { presence: { key: radioClientId } } });
+  channel.on('broadcast', { event: 'signal' }, ({ payload }) => radioHandleSignal(payload));
+  channel.on('presence', { event: 'sync' }, () => {
+    const state = channel.presenceState();
+    const ids = Object.keys(state).filter(id => id !== radioClientId);
+    ids.forEach(id => {
+      if (!radioPeers[id]) {
+        if (radioClientId < id) radioCreateOfferTo(id);
+        else radioGetOrCreatePeer(id);
+      }
+    });
+    Object.keys(radioPeers).forEach(id => { if (!ids.includes(id)) radioRemovePeer(id); });
+  });
+  await channel.subscribe(async (status) => {
+    if (status === 'SUBSCRIBED') await channel.track({ id: radioClientId });
+  });
+  radioSupaChannel = channel;
+}
 
 const radioWidget = document.getElementById('radioWidget');
 const radioChName = document.getElementById('radioChName');
@@ -393,11 +501,13 @@ function radioTurnOn() {
   radioOn = true;
   renderRadio();
   try { radioOnSound.currentTime = 0; radioOnSound.play(); } catch (e) {}
+  radioJoinChannel(RADIO_CHANNELS[radioChannelIndex].key);
 }
 function radioTurnOff() {
   radioOn = false;
   radioStopTransmit();
   renderRadio();
+  radioLeaveChannel();
 }
 
 document.getElementById('radioPowerBtn').addEventListener('mousedown', radioPowerStart);
@@ -424,16 +534,19 @@ document.getElementById('radioChUp').addEventListener('click', () => {
   if (!radioOn) return;
   radioChannelIndex = (radioChannelIndex + 1) % RADIO_CHANNELS.length;
   renderRadio();
+  radioJoinChannel(RADIO_CHANNELS[radioChannelIndex].key);
 });
 document.getElementById('radioChDown').addEventListener('click', () => {
   if (!radioOn) return;
   radioChannelIndex = (radioChannelIndex - 1 + RADIO_CHANNELS.length) % RADIO_CHANNELS.length;
   renderRadio();
+  radioJoinChannel(RADIO_CHANNELS[radioChannelIndex].key);
 });
 
 function radioStartTransmit() {
   if (!radioOn || radioTransmitting) return;
   radioTransmitting = true;
+  if (radioLocalStream) radioLocalStream.getAudioTracks().forEach(t => t.enabled = true);
   radioWidget.classList.add('transmitting');
   pttBtn.classList.add('active');
   radioStatusLine.classList.add('tx');
@@ -441,6 +554,7 @@ function radioStartTransmit() {
 }
 function radioStopTransmit() {
   radioTransmitting = false;
+  if (radioLocalStream) radioLocalStream.getAudioTracks().forEach(t => t.enabled = false);
   radioWidget.classList.remove('transmitting');
   pttBtn.classList.remove('active');
   renderRadio();
