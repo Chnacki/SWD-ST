@@ -397,10 +397,16 @@ function radioPlayRemote(peerId, stream) {
   if (!entry.audioEl) {
     const audioEl = document.createElement('audio');
     audioEl.autoplay = true;
+    audioEl.volume = 1.0;
     document.body.appendChild(audioEl);
     entry.audioEl = audioEl;
   }
   entry.audioEl.srcObject = stream;
+  entry.audioEl.play().catch(() => {});
+}
+
+function radioUnlockAllAudio() {
+  Object.values(radioPeers).forEach(e => { if (e.audioEl) e.audioEl.play().catch(() => {}); });
 }
 
 function radioRemovePeer(peerId) {
@@ -525,6 +531,7 @@ function radioPowerStart() {
 function radioPowerEnd() {
   clearTimeout(radioPowerTimer);
   if (!radioOn && !radioLongPress) radioTurnOn();
+  radioUnlockAllAudio();
 }
 function radioPowerCancel() {
   clearTimeout(radioPowerTimer);
@@ -535,12 +542,14 @@ document.getElementById('radioChUp').addEventListener('click', () => {
   radioChannelIndex = (radioChannelIndex + 1) % RADIO_CHANNELS.length;
   renderRadio();
   radioJoinChannel(RADIO_CHANNELS[radioChannelIndex].key);
+  radioUnlockAllAudio();
 });
 document.getElementById('radioChDown').addEventListener('click', () => {
   if (!radioOn) return;
   radioChannelIndex = (radioChannelIndex - 1 + RADIO_CHANNELS.length) % RADIO_CHANNELS.length;
   renderRadio();
   radioJoinChannel(RADIO_CHANNELS[radioChannelIndex].key);
+  radioUnlockAllAudio();
 });
 
 function radioStartTransmit() {
@@ -551,6 +560,7 @@ function radioStartTransmit() {
   pttBtn.classList.add('active');
   radioStatusLine.classList.add('tx');
   radioStatusLine.textContent = 'NADAJESZ: ' + RADIO_CHANNELS[radioChannelIndex].name;
+  radioUnlockAllAudio();
 }
 function radioStopTransmit() {
   radioTransmitting = false;
