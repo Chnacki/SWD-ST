@@ -10,6 +10,20 @@
 </head>
 <body>
 
+<!-- RADIOTELEFON -->
+<div class="radio-status-line" id="radioStatusLine">Kanał: ---</div>
+<div class="radio-widget" id="radioWidget">
+  <img src="radiotelefon.jpg" class="radio-img" alt="Radiotelefon">
+  <div class="radio-hit power-btn" id="radioPowerBtn"></div>
+  <div class="radio-hit arrow-up" id="radioChUp"></div>
+  <div class="radio-hit arrow-down" id="radioChDown"></div>
+  <div class="radio-screen-num" id="radioChNum">Ch: ---</div>
+  <div class="radio-screen-name" id="radioChName">---</div>
+</div>
+<button class="ptt-btn" id="pttBtn">PTT</button>
+<audio id="radioOnSound" src="radio_on.mp3" preload="auto"></audio>
+
+
 <div class="statusbar"><span id="sb-clock">--:--</span><span>SWD-ST · Punkt Alarmowy</span></div>
 
 <div class="appbar">
@@ -210,6 +224,128 @@ function subscribeRealtime() {
     })
     .subscribe();
 }
+
+// ==========================================================
+// RADIOTELEFON
+// ==========================================================
+const RADIO_CHANNELS = [
+  { num: "020", name: "POWIATOWY" },
+  { num: "004", name: "KRG 1" },
+  { num: "035", name: "KRG 3" },
+  { num: "039", name: "KRG 4" },
+  { num: "041", name: "KRG 5" },
+  { num: "046", name: "KRG 6" },
+  { num: "047", name: "KRG 7" },
+  { num: "049", name: "KRG 8" }
+];
+let radioOn = false;
+let radioChannelIndex = 0;
+let radioPowerTimer = null;
+let radioLongPress = false;
+let radioTransmitting = false;
+
+const radioWidget = document.getElementById('radioWidget');
+const radioChName = document.getElementById('radioChName');
+const radioChNum = document.getElementById('radioChNum');
+const radioStatusLine = document.getElementById('radioStatusLine');
+const radioOnSound = document.getElementById('radioOnSound');
+const pttBtn = document.getElementById('pttBtn');
+
+function renderRadio() {
+  if (!radioOn) {
+    radioChName.textContent = '---';
+    radioChNum.textContent = 'Ch: ---';
+    radioWidget.classList.remove('radio-on');
+    radioStatusLine.textContent = 'Radio wyłączone';
+    radioStatusLine.classList.remove('tx');
+  } else {
+    const ch = RADIO_CHANNELS[radioChannelIndex];
+    radioChName.textContent = ch.name;
+    radioChNum.textContent = 'Ch: ' + ch.num;
+    radioWidget.classList.add('radio-on');
+    if (!radioTransmitting) {
+      radioStatusLine.textContent = 'Kanał: ' + ch.name;
+      radioStatusLine.classList.remove('tx');
+    }
+  }
+}
+
+function radioTurnOn() {
+  radioOn = true;
+  renderRadio();
+  try { radioOnSound.currentTime = 0; radioOnSound.play(); } catch (e) {}
+}
+function radioTurnOff() {
+  radioOn = false;
+  radioStopTransmit();
+  renderRadio();
+}
+
+document.getElementById('radioPowerBtn').addEventListener('mousedown', radioPowerStart);
+document.getElementById('radioPowerBtn').addEventListener('touchstart', radioPowerStart, { passive: true });
+document.getElementById('radioPowerBtn').addEventListener('mouseup', radioPowerEnd);
+document.getElementById('radioPowerBtn').addEventListener('mouseleave', radioPowerCancel);
+document.getElementById('radioPowerBtn').addEventListener('touchend', radioPowerEnd);
+
+function radioPowerStart() {
+  radioLongPress = false;
+  if (radioOn) {
+    radioPowerTimer = setTimeout(() => { radioLongPress = true; radioTurnOff(); }, 600);
+  }
+}
+function radioPowerEnd() {
+  clearTimeout(radioPowerTimer);
+  if (!radioOn && !radioLongPress) radioTurnOn();
+}
+function radioPowerCancel() {
+  clearTimeout(radioPowerTimer);
+}
+
+document.getElementById('radioChUp').addEventListener('click', () => {
+  if (!radioOn) return;
+  radioChannelIndex = (radioChannelIndex + 1) % RADIO_CHANNELS.length;
+  renderRadio();
+});
+document.getElementById('radioChDown').addEventListener('click', () => {
+  if (!radioOn) return;
+  radioChannelIndex = (radioChannelIndex - 1 + RADIO_CHANNELS.length) % RADIO_CHANNELS.length;
+  renderRadio();
+});
+
+function radioStartTransmit() {
+  if (!radioOn || radioTransmitting) return;
+  radioTransmitting = true;
+  radioWidget.classList.add('transmitting');
+  pttBtn.classList.add('active');
+  radioStatusLine.classList.add('tx');
+  radioStatusLine.textContent = 'NADAJESZ: ' + RADIO_CHANNELS[radioChannelIndex].name;
+}
+function radioStopTransmit() {
+  radioTransmitting = false;
+  radioWidget.classList.remove('transmitting');
+  pttBtn.classList.remove('active');
+  renderRadio();
+}
+
+pttBtn.addEventListener('mousedown', radioStartTransmit);
+pttBtn.addEventListener('touchstart', (e) => { e.preventDefault(); radioStartTransmit(); }, { passive: false });
+pttBtn.addEventListener('mouseup', radioStopTransmit);
+pttBtn.addEventListener('mouseleave', radioStopTransmit);
+pttBtn.addEventListener('touchend', radioStopTransmit);
+
+document.addEventListener('keydown', (e) => {
+  if (e.key !== '`') return;
+  const tag = document.activeElement.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  e.preventDefault();
+  radioStartTransmit();
+});
+document.addEventListener('keyup', (e) => {
+  if (e.key !== '`') return;
+  radioStopTransmit();
+});
+
+renderRadio();
 
 openScreen('menu');
 </script>
