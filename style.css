@@ -83,7 +83,7 @@ button { font-family: inherit; }
 .status-tile-h {
   flex: 1; min-width: 0; background: #2c3e44; border: 1px solid #1c282d; border-radius: 4px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  cursor: pointer; padding: 10px 4px; text-align: center; min-height: 130px;
+  cursor: pointer; padding: 10px 4px; text-align: center; min-height: 190px;
   color: #cfd8dc;
 }
 .status-tile-h .label { font-size: 12px; font-weight: 800; letter-spacing: .2px; line-height: 1.25; }
@@ -128,3 +128,56 @@ textarea { resize: vertical; min-height: 70px; }
 table.simple { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
 table.simple th, table.simple td { text-align: left; padding: 8px; border-bottom: 1px solid #d6dee1; }
 table.simple th { color: #607078; font-size: 11px; text-transform: uppercase; }
+
+/* ===========================================================
+   RADIOTELEFON - widget w rogu ekranu
+   =========================================================== */
+.radio-widget {
+  position: fixed; right: 10px; bottom: 10px; z-index: 9999;
+  width: 190px; height: 142.5px; /* proporcja 4:3 jak zdjęcie 800x600 */
+  filter: drop-shadow(0 3px 8px rgba(0,0,0,.4));
+}
+.radio-widget .radio-img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: contain; pointer-events: none; user-select: none;
+}
+.radio-hit { position: absolute; cursor: pointer; }
+.radio-hit.power-btn { left: 15%; top: 42%; width: 14%; height: 20%; border-radius: 50%; }
+.radio-hit.arrow-up { left: 54%; top: 48%; width: 9%; height: 7%; }
+.radio-hit.arrow-down { left: 54%; top: 60%; width: 9%; height: 7%; }
+
+.radio-screen-name {
+  position: absolute; left: 29%; top: 57.5%; width: 29%; height: 6%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 7.5px; font-weight: 700; letter-spacing: .3px;
+  color: #4c5a5f; overflow: hidden; white-space: nowrap; pointer-events: none;
+}
+.radio-screen-num {
+  position: absolute; left: 29%; top: 51%; width: 29%; height: 6.5%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 7.5px; font-weight: 700; color: #7a3a3a; pointer-events: none;
+}
+.radio-widget.radio-on .radio-screen-name { color: #8afcae; text-shadow: 0 0 3px rgba(138,252,174,.7); }
+.radio-widget.radio-on .radio-screen-num { color: #ffe08a; text-shadow: 0 0 3px rgba(255,224,138,.6); }
+
+.radio-widget.transmitting { filter: drop-shadow(0 0 10px rgba(255,60,60,.85)); }
+
+.radio-status-line {
+  position: fixed; right: 10px; bottom: 156px; z-index: 9999;
+  font-size: 10px; font-weight: 700; color: #14394d;
+  background: #fff; border: 1px solid #b7c6cc; border-radius: 4px;
+  padding: 3px 8px; text-align: right;
+}
+.radio-status-line.tx { color: #fff; background: #c0392b; border-color: #8e2a20; }
+
+.ptt-btn {
+  position: fixed; right: 210px; bottom: 10px; z-index: 9999;
+  width: 74px; height: 74px; border-radius: 50%;
+  background: #37474f; color: #cfd8dc; border: 3px solid #1c282d;
+  font-size: 11px; font-weight: 800; letter-spacing: .3px;
+  box-shadow: 0 3px 6px rgba(0,0,0,.3);
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  user-select: none; -webkit-user-select: none;
+}
+.ptt-btn.active { background: #c0392b; border-color: #8e2a20; color: #fff; }
+
