@@ -180,3 +180,58 @@ table.simple th { color: #607078; font-size: 11px; text-transform: uppercase; }
   user-select: none; -webkit-user-select: none;
 }
 .ptt-btn.active { background: #c0392b; border-color: #8e2a20; color: #fff; }
+
+/* ===========================================================
+   RADIO.HTML - pełnoekranowy radiotelefon (4. strona)
+   =========================================================== */
+.radio-fullpage-page {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 100vh; background: #b9c4ca; gap: 22px; padding: 20px;
+}
+.radio-fullpage-widget {
+  position: relative; width: min(92vw, 460px); aspect-ratio: 1 / 1;
+  filter: drop-shadow(0 6px 18px rgba(0,0,0,.45));
+}
+.radio-fullpage-widget img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: contain; pointer-events: none; user-select: none;
+}
+.radio-fullpage-hit { position: absolute; cursor: pointer; }
+.radio-fullpage-hit.power { left: 34%; top: 23.5%; width: 8%; height: 8%; border-radius: 50%; }
+.radio-fullpage-hit.channel { left: 44.5%; top: 19%; width: 10.5%; height: 13%; border-radius: 40%; }
+
+.radio-fullpage-screen-off {
+  position: absolute; left: 31.9%; top: 41.25%; width: 37.5%; height: 26.9%;
+  background: #0b171c; border-radius: 3px;
+}
+.radio-fullpage-widget.on .radio-fullpage-screen-off { display: none; }
+
+.radio-fullpage-num {
+  position: absolute; left: 34%; top: 48%; width: 25%; height: 4.5%;
+  display: flex; align-items: center;
+  font-size: clamp(9px, 2.1vw, 15px); font-weight: 700; color: #2e7d32; pointer-events: none;
+}
+.radio-fullpage-name {
+  position: absolute; left: 34%; top: 51.3%; width: 32%; height: 5.5%;
+  display: flex; align-items: center;
+  font-size: clamp(11px, 2.6vw, 19px); font-weight: 800; color: #0d3b17; pointer-events: none;
+  white-space: nowrap; overflow: hidden;
+}
+
+.radio-fullpage-widget.transmitting { filter: drop-shadow(0 0 22px rgba(255,60,60,.9)); }
+
+.radio-fullpage-status {
+  font-size: 14px; font-weight: 700; color: #14394d;
+  background: #fff; border: 1px solid #b7c6cc; border-radius: 5px; padding: 6px 16px;
+}
+.radio-fullpage-status.tx { background: #c0392b; color: #fff; border-color: #8e2a20; }
+
+.radio-fullpage-ptt {
+  width: 110px; height: 110px; border-radius: 50%;
+  background: #37474f; color: #cfd8dc; border: 4px solid #1c282d;
+  font-size: 15px; font-weight: 800; box-shadow: 0 4px 10px rgba(0,0,0,.3);
+  user-select: none; -webkit-user-select: none;
+}
+.radio-fullpage-ptt.active { background: #c0392b; border-color: #8e2a20; color: #fff; }
+
+.radio-fullpage-hint { font-size: 11px; color: #4c5a5f; text-align: center; max-width: 320px; }
