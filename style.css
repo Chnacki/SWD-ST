@@ -200,22 +200,46 @@ table.simple th { color: #607078; font-size: 11px; text-transform: uppercase; }
 .radio-fullpage-hit.power { left: 34%; top: 23.5%; width: 8%; height: 8%; border-radius: 50%; }
 .radio-fullpage-hit.channel { left: 44.5%; top: 19%; width: 10.5%; height: 13%; border-radius: 40%; }
 
-.radio-fullpage-screen-off {
+.radio-fullpage-screen {
   position: absolute; left: 31.9%; top: 41.25%; width: 37.5%; height: 26.9%;
-  background: #0b171c; border-radius: 3px;
+  background: #060d11; border-radius: 3px; overflow: hidden;
+  transition: background-color .2s ease;
 }
-.radio-fullpage-widget.on .radio-fullpage-screen-off { display: none; }
+.radio-fullpage-screen.on { background: #eef4f7; }
+
+.radio-fullpage-boot,
+.radio-fullpage-channel {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity .2s ease;
+}
+.radio-fullpage-screen.booting .radio-fullpage-boot { opacity: 1; }
+.radio-fullpage-screen.on .radio-fullpage-channel {
+  opacity: 1; align-items: flex-start; justify-content: center; padding-left: 8%;
+}
+
+.radio-fullpage-boot .rfp-brand {
+  color: #fff; font-weight: 800; letter-spacing: 1px; text-align: center;
+  font-size: clamp(10px, 2.6vw, 16px); margin-bottom: 6%;
+}
+.radio-fullpage-boot .rfp-line {
+  color: #d7dee1; font-weight: 400; text-align: center;
+  font-size: clamp(8px, 2vw, 12px); line-height: 1.6;
+}
+.radio-fullpage-boot .rfp-version {
+  color: #9aa6ab; font-weight: 400; text-align: center;
+  font-size: clamp(8px, 1.8vw, 11px); margin-top: 6%;
+}
 
 .radio-fullpage-num {
-  position: absolute; left: 34%; top: 48%; width: 25%; height: 4.5%;
-  display: flex; align-items: center;
-  font-size: clamp(9px, 2.1vw, 15px); font-weight: 700; color: #2e7d32; pointer-events: none;
+  font-size: clamp(8px, 1.9vw, 12px); font-weight: 500; color: #5c6b73;
+  letter-spacing: .2px; white-space: nowrap; overflow: hidden; pointer-events: none;
 }
 .radio-fullpage-name {
-  position: absolute; left: 34%; top: 51.3%; width: 32%; height: 5.5%;
-  display: flex; align-items: center;
-  font-size: clamp(11px, 2.6vw, 19px); font-weight: 800; color: #0d3b17; pointer-events: none;
-  white-space: nowrap; overflow: hidden;
+  margin-top: 2%;
+  font-size: clamp(11px, 2.6vw, 18px); font-weight: 800; color: #10222b;
+  white-space: nowrap; overflow: hidden; pointer-events: none;
 }
 
 .radio-fullpage-widget.transmitting { filter: drop-shadow(0 0 22px rgba(255,60,60,.9)); }
