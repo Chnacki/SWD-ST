@@ -201,8 +201,8 @@ table.simple th { color: #607078; font-size: 11px; text-transform: uppercase; }
 .radio-fullpage-hit.channel { left: 44.5%; top: 19%; width: 10.5%; height: 13%; border-radius: 40%; }
 
 .radio-fullpage-screen {
-  position: absolute; left: 31.9%; top: 41.25%; width: 37.5%; height: 26.9%;
-  background: #060d11; border-radius: 3px; overflow: hidden;
+  position: absolute; left: 40.7%; top: 44.2%; width: 18.7%; height: 32.9%;
+  background: #060d11; border-radius: 2px; overflow: hidden;
   transition: background-color .2s ease;
 }
 .radio-fullpage-screen.on { background: #eef4f7; }
@@ -220,25 +220,25 @@ table.simple th { color: #607078; font-size: 11px; text-transform: uppercase; }
 }
 
 .radio-fullpage-boot .rfp-brand {
-  color: #fff; font-weight: 800; letter-spacing: 1px; text-align: center;
-  font-size: clamp(10px, 2.6vw, 16px); margin-bottom: 6%;
+  color: #fff; font-weight: 800; letter-spacing: .5px; text-align: center;
+  font-size: clamp(6px, 1.5vw, 9px); margin-bottom: 6%;
 }
 .radio-fullpage-boot .rfp-line {
   color: #d7dee1; font-weight: 400; text-align: center;
-  font-size: clamp(8px, 2vw, 12px); line-height: 1.6;
+  font-size: clamp(5px, 1.1vw, 7px); line-height: 1.6;
 }
 .radio-fullpage-boot .rfp-version {
   color: #9aa6ab; font-weight: 400; text-align: center;
-  font-size: clamp(8px, 1.8vw, 11px); margin-top: 6%;
+  font-size: clamp(5px, 1vw, 6.5px); margin-top: 6%;
 }
 
 .radio-fullpage-num {
-  font-size: clamp(8px, 1.9vw, 12px); font-weight: 500; color: #5c6b73;
+  font-size: clamp(5px, 1.1vw, 7px); font-weight: 500; color: #5c6b73;
   letter-spacing: .2px; white-space: nowrap; overflow: hidden; pointer-events: none;
 }
 .radio-fullpage-name {
-  margin-top: 2%;
-  font-size: clamp(11px, 2.6vw, 18px); font-weight: 800; color: #10222b;
+  margin-top: 4%;
+  font-size: clamp(6px, 1.5vw, 10px); font-weight: 800; color: #10222b;
   white-space: nowrap; overflow: hidden; pointer-events: none;
 }
 
