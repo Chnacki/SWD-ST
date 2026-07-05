@@ -150,7 +150,7 @@ table.simple th { color: #607078; font-size: 11px; text-transform: uppercase; }
   position: absolute; left: 29%; top: 57.5%; width: 29%; height: 6%;
   display: flex; align-items: center; justify-content: center;
   font-size: 13px; font-weight: 700; letter-spacing: .3px;
-  color: #4c5a5f; overflow: hidden; white-space: nowrap; pointer-events: none;
+  color: #4c5a5f; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; pointer-events: none;
 }
 .radio-screen-num {
   position: absolute; left: 29%; top: 51%; width: 29%; height: 6.5%;
@@ -205,7 +205,7 @@ table.simple th { color: #607078; font-size: 11px; text-transform: uppercase; }
   background: #060d11; border-radius: 2px; overflow: hidden;
   transition: background-color .2s ease;
 }
-.radio-fullpage-screen.on { background: #eef4f7; }
+.radio-fullpage-screen.on { background: #ffffff; }
 
 .radio-fullpage-boot,
 .radio-fullpage-channel {
@@ -216,7 +216,57 @@ table.simple th { color: #607078; font-size: 11px; text-transform: uppercase; }
 }
 .radio-fullpage-screen.booting .radio-fullpage-boot { opacity: 1; }
 .radio-fullpage-screen.on .radio-fullpage-channel {
-  opacity: 1; align-items: flex-start; justify-content: center; padding-left: 8%;
+  opacity: 1; align-items: stretch; justify-content: flex-start; padding-left: 0;
+  flex-direction: column;
+}
+
+.rfp-status-row {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 4%;
+  padding: 4% 6% 1%; background: #ffffff;
+}
+.rfp-status-row .rfp-ic {
+  font-size: clamp(4px, 1vw, 6px); color: #1c2b26; line-height: 1;
+}
+.rfp-status-row .rfp-battery {
+  margin-left: auto; font-size: clamp(4px, 1vw, 6px); color: #1c2b26;
+}
+.rfp-datetime-row {
+  flex: 0 0 auto; display: flex; justify-content: space-between;
+  padding: 0 6% 3%; background: #ffffff;
+  font-size: clamp(3.5px, 0.9vw, 5.5px); color: #45555a; font-weight: 500;
+}
+.rfp-msg-box {
+  flex: 0 0 auto; margin: 4% 7% 3%; padding: 4% 6%;
+  background: #eaf3fa; border-radius: 2px; overflow: hidden;
+}
+.rfp-wave-area {
+  flex: 1 1 auto; position: relative; overflow: hidden;
+  background: #ffffff;
+}
+.rfp-wave-area::before {
+  content: ''; position: absolute; inset: 0;
+  background: #bfe0f2;
+  clip-path: polygon(0 35%, 100% 0, 100% 100%, 0 100%);
+}
+.rfp-wave-area::after { content: none; }
+.rfp-tabbar {
+  flex: 0 0 auto; display: flex;
+}
+.rfp-tab {
+  flex: 1; text-align: center; background: #0f6f96; color: #fff;
+  font-weight: 700; font-size: clamp(3.5px, 1vw, 6px); padding: 5% 0;
+}
+.rfp-tab:first-child { border-right: 1px solid rgba(255,255,255,.25); }
+
+.radio-fullpage-num {
+  font-size: clamp(4px, 1vw, 6.5px); font-weight: 500; color: #8a8a8a;
+  letter-spacing: .1px; white-space: nowrap; overflow: hidden; pointer-events: none;
+}
+.radio-fullpage-name {
+  margin-top: 6%;
+  font-size: clamp(5px, 1.3vw, 9px); font-weight: 800; color: #10222b;
+  white-space: nowrap; overflow: hidden; pointer-events: none;
+  text-overflow: ellipsis;
 }
 
 .radio-fullpage-boot .rfp-brand {
@@ -230,16 +280,6 @@ table.simple th { color: #607078; font-size: 11px; text-transform: uppercase; }
 .radio-fullpage-boot .rfp-version {
   color: #9aa6ab; font-weight: 400; text-align: center;
   font-size: clamp(5px, 1vw, 6.5px); margin-top: 6%;
-}
-
-.radio-fullpage-num {
-  font-size: clamp(5px, 1.1vw, 7px); font-weight: 500; color: #5c6b73;
-  letter-spacing: .2px; white-space: nowrap; overflow: hidden; pointer-events: none;
-}
-.radio-fullpage-name {
-  margin-top: 4%;
-  font-size: clamp(6px, 1.5vw, 10px); font-weight: 800; color: #10222b;
-  white-space: nowrap; overflow: hidden; pointer-events: none;
 }
 
 .radio-fullpage-widget.transmitting { filter: drop-shadow(0 0 22px rgba(255,60,60,.9)); }
