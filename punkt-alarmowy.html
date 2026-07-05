@@ -388,15 +388,15 @@ const pttBtn = document.getElementById('pttBtn');
 
 function renderRadio() {
   if (!radioOn) {
-    radioChName.textContent = '---';
-    radioChNum.textContent = 'Ch: ---';
+    radioChName.textContent = '';
+    radioChNum.textContent = '';
     radioWidget.classList.remove('radio-on');
     radioStatusLine.textContent = 'Radio wyłączone';
     radioStatusLine.classList.remove('tx');
   } else {
     const ch = RADIO_CHANNELS[radioChannelIndex];
     radioChName.textContent = ch.name;
-    radioChNum.textContent = 'Ch: ' + ch.num;
+    radioChNum.textContent = ch.num;
     radioWidget.classList.add('radio-on');
     if (!radioTransmitting) {
       radioStatusLine.textContent = 'Kanał: ' + ch.name;
