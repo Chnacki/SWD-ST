@@ -201,7 +201,7 @@ table.simple th { color: #607078; font-size: 11px; text-transform: uppercase; }
 .radio-fullpage-hit.channel { left: 45%; top: 19%; width: 11%; height: 13%; border-radius: 40%; }
 
 .radio-fullpage-screen {
-  position: absolute; left: 38%; top: 49%; width: 22%; height: 26%;
+  position: absolute; left: 38%; top: 51%; width: 22%; height: 29%;
   background: #060d11; border-radius: 2px; overflow: hidden;
   transition: background-color .2s ease;
 }
