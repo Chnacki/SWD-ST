@@ -134,7 +134,7 @@ table.simple th { color: #607078; font-size: 11px; text-transform: uppercase; }
    =========================================================== */
 .radio-widget {
   position: fixed; right: 10px; bottom: 10px; z-index: 9999;
-  width: 320px; height: 240px; /* proporcja 4:3 jak zdjęcie 800x600 */
+  width: 380px; height: 101px; /* proporcja jak nowe zdjęcie 1200x319 */
   filter: drop-shadow(0 3px 8px rgba(0,0,0,.4));
 }
 .radio-widget .radio-img {
@@ -142,20 +142,20 @@ table.simple th { color: #607078; font-size: 11px; text-transform: uppercase; }
   object-fit: contain; pointer-events: none; user-select: none;
 }
 .radio-hit { position: absolute; cursor: pointer; }
-.radio-hit.power-btn { left: 15%; top: 42%; width: 14%; height: 20%; border-radius: 50%; }
-.radio-hit.arrow-up { left: 54%; top: 48%; width: 9%; height: 7%; }
-.radio-hit.arrow-down { left: 54%; top: 60%; width: 9%; height: 7%; }
+.radio-hit.power-btn { left: 3.5%; top: 15%; width: 5%; height: 15%; border-radius: 50%; }
+.radio-hit.arrow-up { left: 44%; top: 26%; width: 6%; height: 13%; }
+.radio-hit.arrow-down { left: 44%; top: 40%; width: 6%; height: 13%; }
 
 .radio-screen-name {
-  position: absolute; left: 29%; top: 57.5%; width: 29%; height: 6%;
+  position: absolute; left: 23%; top: 43%; width: 19%; height: 15%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 13px; font-weight: 700; letter-spacing: .3px;
+  font-size: 7px; font-weight: 700; letter-spacing: .2px;
   color: #4c5a5f; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; pointer-events: none;
 }
 .radio-screen-num {
-  position: absolute; left: 29%; top: 51%; width: 29%; height: 6.5%;
+  position: absolute; left: 23%; top: 29%; width: 19%; height: 13%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 13px; font-weight: 700; color: #7a3a3a; pointer-events: none;
+  font-size: 7px; font-weight: 700; color: #7a3a3a; pointer-events: none;
 }
 .radio-widget.radio-on .radio-screen-name { color: #8afcae; text-shadow: 0 0 3px rgba(138,252,174,.7); }
 .radio-widget.radio-on .radio-screen-num { color: #ffe08a; text-shadow: 0 0 3px rgba(255,224,138,.6); }
