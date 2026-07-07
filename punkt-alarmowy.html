@@ -10,6 +10,26 @@
 </head>
 <body>
 
+<script>
+(function() {
+  let user = null;
+  try { user = JSON.parse(sessionStorage.getItem('swd_user') || 'null'); } catch (e) {}
+  if (!user) { location.href = 'index.html'; }
+  window.swdUser = user;
+})();
+</script>
+
+<div class="statusbar" style="background:#14394d;">
+  <span id="sessionUserLabel"></span>
+  <span><a href="index.html" style="color:#cfe3ec; text-decoration:none;">Menu</a></span>
+</div>
+<script>
+if (window.swdUser) {
+  document.getElementById('sessionUserLabel').textContent =
+    'Zalogowano: ' + window.swdUser.imie + ' ' + window.swdUser.nazwisko + ' (' + window.swdUser.stopien + ')';
+}
+</script>
+
 <!-- RADIOTELEFON -->
 <div class="radio-status-line" id="radioStatusLine">Kanał: ---</div>
 <div class="radio-widget" id="radioWidget">
