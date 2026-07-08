@@ -2,6 +2,7 @@ Aplikacja stworzona dla projektu Powiat bydgoski 998, zabrania się używania ko
 
 
 Wersje aplikacji:
+
 HUB - v1.0
 
 Komenda - v1.0.5
