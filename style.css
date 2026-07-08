@@ -35,7 +35,7 @@ html, body {
 
 .screen { padding: 14px; max-width: 460px; margin: 0 auto; }
 
-/* siatka*/
+/* siatka dużych kafelków, jak na zrzucie ekranu */
 .tiles {
   display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
   margin-top: 10px;
@@ -130,7 +130,7 @@ table.simple th, table.simple td { text-align: left; padding: 8px; border-bottom
 table.simple th { color: #607078; font-size: 11px; text-transform: uppercase; }
 
 /* ===========================================================
-   RADIOTELEFON
+   RADIOTELEFON - widget w rogu ekranu
    =========================================================== */
 .radio-widget {
   position: fixed; right: 10px; bottom: 10px; z-index: 9999;
@@ -182,7 +182,7 @@ table.simple th { color: #607078; font-size: 11px; text-transform: uppercase; }
 .ptt-btn.active { background: #c0392b; border-color: #8e2a20; color: #fff; }
 
 /* ===========================================================
-   RADIO
+   RADIO.HTML - pełnoekranowy radiotelefon (4. strona)
    =========================================================== */
 .radio-fullpage-page {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
