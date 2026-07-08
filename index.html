@@ -13,7 +13,7 @@
 <div id="loginView" class="login-wrap">
   <div class="login-card">
     <h1>SWD PSP</h1>
-    <p>Zaloguj się swoim imieniem, nazwiskiem i hasłem.</p>
+    <p>Zaloguj się swoim ID.</p>
     <label>Imię</label>
     <input type="text" id="loginImie" autocomplete="given-name">
     <label>Nazwisko</label>
@@ -38,16 +38,16 @@
 
   <div class="tiles">
     <div class="tile" onclick="location.href='punkt-alarmowy.html'">
-      <div class="label">Punkt alarmowy</div>
+      <div class="label">Punkt alarmowy 304-10</div>
     </div>
     <div class="tile" onclick="location.href='msk.html'">
       <div class="label">MSK</div>
     </div>
     <div class="tile" onclick="location.href='woz.html'">
-      <div class="label">Pojazd</div>
+      <div class="label">SWD-ST</div>
     </div>
     <div class="tile" id="adminTile" style="display:none;" onclick="location.href='komenda.html'">
-      <div class="label">Komenda (panel admina)</div>
+      <div class="label">Komenda miejska</div>
     </div>
   </div>
 </div>
@@ -105,7 +105,7 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
     return;
   }
   if (!data || data.length === 0) {
-    showError('Nieprawidłowe imię, nazwisko lub hasło.');
+    showError('Nieprawidłowe imię n azwisko lub hasło.');
     return;
   }
 
