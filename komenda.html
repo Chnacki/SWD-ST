@@ -21,7 +21,7 @@
 
 <div class="appbar">
   <div>
-    <div class="title">Komenda - Panel admina</div>
+    <div class="title">Komenda - Panel komendanta</div>
     <div class="sub" id="whoAmI"></div>
   </div>
   <button class="logout" onclick="location.href='index.html'">Wróć do menu</button>
@@ -64,9 +64,9 @@
             <option>aspirant</option>
             <option>starszy aspirant</option>
             <option>aspirant sztabowy</option>
-            <option>podporucznik</option>
-            <option>porucznik</option>
+            <option>młodszy kapitan</option>
             <option>kapitan</option>
+            <option>starszy kapitan</option>
             <option>młodszy brygadier</option>
             <option>brygadier</option>
             <option>starszy brygadier</option>
@@ -95,7 +95,7 @@
 <script>
 const STOPNIE = ["strażak","starszy strażak","sekcyjny","starszy sekcyjny","młodszy ogniomistrz","ogniomistrz",
   "starszy ogniomistrz","młodszy aspirant","aspirant","starszy aspirant","aspirant sztabowy",
-  "podporucznik","porucznik","kapitan","młodszy brygadier","brygadier","starszy brygadier"];
+  "młodszy kapitan","kapitan","starszy kapitan","młodszy brygadier","brygadier","starszy brygadier"];
 
 function getSession() {
   try { return JSON.parse(sessionStorage.getItem('swd_user') || 'null'); }
