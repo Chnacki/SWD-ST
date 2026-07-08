@@ -97,22 +97,33 @@ const STOPNIE = ["strażak","starszy strażak","sekcyjny","starszy sekcyjny","m�
   "starszy ogniomistrz","młodszy aspirant","aspirant","starszy aspirant","aspirant sztabowy",
   "młodszy kapitan","kapitan","starszy kapitan","młodszy brygadier","brygadier","starszy brygadier"];
 
-function getSession() {
-  try { return JSON.parse(sessionStorage.getItem('swd_user') || 'null'); }
-  catch (e) { return null; }
-}
+let currentUser = null;
 
-const user = getSession();
-if (!user || user.rola !== 'admin') {
-  document.getElementById('guardMsg').style.display = 'block';
-} else {
+async function initGuard() {
+  const { data: sessionData } = await sb.auth.getSession();
+  if (!sessionData?.session) {
+    document.getElementById('guardMsg').style.display = 'block';
+    return;
+  }
+  const { data: profile, error } = await sb
+    .from('profiles')
+    .select('id, imie, nazwisko, stopien, rola')
+    .eq('id', sessionData.session.user.id)
+    .single();
+
+  if (error || !profile || profile.rola !== 'admin') {
+    document.getElementById('guardMsg').style.display = 'block';
+    return;
+  }
+  currentUser = profile;
   document.getElementById('adminPanel').style.display = 'block';
-  document.getElementById('whoAmI').textContent = 'Zalogowano jako: ' + user.imie + ' ' + user.nazwisko + ' (' + user.stopien + ')';
+  document.getElementById('whoAmI').textContent = 'Zalogowano jako: ' + profile.imie + ' ' + profile.nazwisko + ' (' + profile.stopien + ')';
   loadAccounts();
 }
+initGuard();
 
 async function loadAccounts() {
-  const { data, error } = await sb.from('accounts').select('*').order('nazwisko');
+  const { data, error } = await sb.from('profiles').select('*').order('nazwisko');
   const tbody = document.getElementById('accTableBody');
   tbody.innerHTML = '';
   if (error) {
@@ -132,7 +143,6 @@ async function loadAccounts() {
       <td><select data-id="${acc.id}" class="stopienSelect">${stopienOptions}</select></td>
       <td>${acc.rola}</td>
       <td>
-        <button class="del-btn" style="background:#607078;margin-right:6px;" data-id="${acc.id}" data-action="haslo">Zmień hasło</button>
         <button class="del-btn" data-id="${acc.id}" data-action="usun">Usuń</button>
       </td>
     `;
@@ -142,25 +152,17 @@ async function loadAccounts() {
   tbody.querySelectorAll('.stopienSelect').forEach(sel => {
     sel.addEventListener('change', async () => {
       const id = sel.getAttribute('data-id');
-      await sb.from('accounts').update({ stopien: sel.value }).eq('id', id);
+      const { error } = await sb.rpc('admin_update_stopien', { p_profile_id: id, p_stopien: sel.value });
+      if (error) alert('Błąd zmiany stopnia: ' + error.message);
     });
   });
   tbody.querySelectorAll('[data-action="usun"]').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (!confirm('Na pewno usunąć to konto?')) return;
       const id = btn.getAttribute('data-id');
-      await sb.from('accounts').delete().eq('id', id);
+      const { error } = await sb.rpc('admin_delete_account', { p_profile_id: id });
+      if (error) { alert('Błąd usuwania: ' + error.message); return; }
       loadAccounts();
-    });
-  });
-  tbody.querySelectorAll('[data-action="haslo"]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const nowe = prompt('Nowe hasło dla tego konta:');
-      if (!nowe) return;
-      const id = btn.getAttribute('data-id');
-      const { error } = await sb.rpc('admin_set_haslo', { p_id: id, p_nowe_haslo: nowe });
-      if (error) alert('Błąd zmiany hasła.');
-      else alert('Hasło zmienione.');
     });
   });
 }
@@ -180,15 +182,19 @@ document.getElementById('addAccBtn').addEventListener('click', async () => {
     return;
   }
 
-  const { error } = await sb.rpc('admin_add_account', {
-    p_imie: imie,
-    p_nazwisko: nazwisko,
-    p_stopien: stopien,
-    p_haslo: haslo,
-    p_rola: rola
+  const { data: sessionData } = await sb.auth.getSession();
+  const resp = await fetch(sb.supabaseUrl + '/functions/v1/create-account', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + sessionData.session.access_token
+    },
+    body: JSON.stringify({ imie, nazwisko, stopien, haslo, rola })
   });
-  if (error) {
-    errEl.textContent = 'Błąd dodawania konta.';
+  const result = await resp.json();
+
+  if (!resp.ok) {
+    errEl.textContent = 'Błąd dodawania konta: ' + (result.error || resp.status);
     errEl.style.display = 'block';
     return;
   }
