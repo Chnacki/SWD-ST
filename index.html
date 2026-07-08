@@ -92,13 +92,11 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
     return;
   }
 
-  const { data, error } = await sb
-    .from('accounts')
-    .select('id, imie, nazwisko, stopien, rola')
-    .ilike('imie', imie)
-    .ilike('nazwisko', nazwisko)
-    .eq('haslo', haslo)
-    .limit(1);
+  const { data, error } = await sb.rpc('login_account', {
+    p_imie: imie,
+    p_nazwisko: nazwisko,
+    p_haslo: haslo
+  });
 
   if (error) {
     showError('Błąd połączenia z bazą. Spróbuj ponownie.');
