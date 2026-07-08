@@ -131,7 +131,10 @@ async function loadAccounts() {
       <td>${acc.nazwisko}</td>
       <td><select data-id="${acc.id}" class="stopienSelect">${stopienOptions}</select></td>
       <td>${acc.rola}</td>
-      <td><button class="del-btn" data-id="${acc.id}">Usuń</button></td>
+      <td>
+        <button class="del-btn" style="background:#607078;margin-right:6px;" data-id="${acc.id}" data-action="haslo">Zmień hasło</button>
+        <button class="del-btn" data-id="${acc.id}" data-action="usun">Usuń</button>
+      </td>
     `;
     tbody.appendChild(tr);
   });
@@ -142,12 +145,22 @@ async function loadAccounts() {
       await sb.from('accounts').update({ stopien: sel.value }).eq('id', id);
     });
   });
-  tbody.querySelectorAll('.del-btn').forEach(btn => {
+  tbody.querySelectorAll('[data-action="usun"]').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (!confirm('Na pewno usunąć to konto?')) return;
       const id = btn.getAttribute('data-id');
       await sb.from('accounts').delete().eq('id', id);
       loadAccounts();
+    });
+  });
+  tbody.querySelectorAll('[data-action="haslo"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const nowe = prompt('Nowe hasło dla tego konta:');
+      if (!nowe) return;
+      const id = btn.getAttribute('data-id');
+      const { error } = await sb.rpc('admin_set_haslo', { p_id: id, p_nowe_haslo: nowe });
+      if (error) alert('Błąd zmiany hasła.');
+      else alert('Hasło zmienione.');
     });
   });
 }
@@ -167,7 +180,13 @@ document.getElementById('addAccBtn').addEventListener('click', async () => {
     return;
   }
 
-  const { error } = await sb.from('accounts').insert({ imie, nazwisko, stopien, haslo, rola });
+  const { error } = await sb.rpc('admin_add_account', {
+    p_imie: imie,
+    p_nazwisko: nazwisko,
+    p_stopien: stopien,
+    p_haslo: haslo,
+    p_rola: rola
+  });
   if (error) {
     errEl.textContent = 'Błąd dodawania konta.';
     errEl.style.display = 'block';
