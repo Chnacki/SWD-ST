@@ -171,7 +171,7 @@ table.simple th { color: #607078; font-size: 11px; text-transform: uppercase; }
 .radio-status-line.tx { color: #fff; background: #c0392b; border-color: #8e2a20; }
 
 .ptt-btn {
-  position: fixed; right: 430px; bottom: 10px; z-index: 9999;
+  position: fixed; right: 340px; bottom: 10px; z-index: 9999;
   width: 110px; height: 110px; border-radius: 50%;
   background: #37474f; color: #cfd8dc; border: 4px solid #1c282d;
   font-size: 15px; font-weight: 800; letter-spacing: .3px;
@@ -198,10 +198,10 @@ table.simple th { color: #607078; font-size: 11px; text-transform: uppercase; }
 }
 .radio-fullpage-hit { position: absolute; cursor: pointer; }
 .radio-fullpage-hit.power { left: 34%; top: 23.5%; width: 8%; height: 8%; border-radius: 50%; }
-.radio-fullpage-hit.channel { left: 45%; top: 19%; width: 11%; height: 13%; border-radius: 40%; }
+.radio-fullpage-hit.channel { left: 44.5%; top: 19%; width: 10.5%; height: 13%; border-radius: 40%; }
 
 .radio-fullpage-screen {
-  position: absolute; left: 38%; top: 51%; width: 22%; height: 29%;
+  position: absolute; left: 40.8%; top: 44.8%; width: 18.8%; height: 28.5%;
   background: #060d11; border-radius: 2px; overflow: hidden;
   transition: background-color .2s ease;
 }
