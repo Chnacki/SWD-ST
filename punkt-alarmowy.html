@@ -75,6 +75,15 @@ if (window.swdUser) {
         <svg class="icon" viewBox="0 0 24 24" fill="#2e7d32"><path d="M5 21V4l14 7-14 7z"/></svg>
         <div class="label">Pokaż statusy</div>
       </div>
+      <div class="tile" onclick="openScreen('zmiana')">
+        <div class="label">Rozpocznij zmianę</div>
+      </div>
+      <div class="tile" onclick="openScreen('podzial')">
+        <div class="label">Podział Bojowy</div>
+      </div>
+      <div class="tile" onclick="openScreen('raport')">
+        <div class="label">Raporty i Statystyki</div>
+      </div>
     </div>
   </div>
 
@@ -118,6 +127,58 @@ if (window.swdUser) {
     <div id="statusList" style="margin-top:14px;"></div>
   </div>
 
+  <!-- ROZPOCZNIJ / ZAKOŃCZ ZMIANĘ -->
+  <div id="screen-zmiana" style="display:none;">
+    <div class="backlink" onclick="openScreen('menu')">‹ Wstecz</div>
+    <h2 style="font-size:15px;color:#14394d;">Rozpoczęcie/zakończenie zmiany</h2>
+    <div id="zmianaContent"></div>
+  </div>
+
+  <!-- PODZIAŁ BOJOWY -->
+  <div id="screen-podzial" style="display:none;">
+    <div class="backlink" onclick="openScreen('menu')">‹ Wstecz</div>
+    <h2 style="font-size:15px;color:#14394d;">Podział Bojowy</h2>
+    <div id="podzialList"></div>
+  </div>
+
+  <!-- RAPORT -->
+  <div id="screen-raport" style="display:none;">
+    <div class="backlink" onclick="openScreen('menu')">‹ Wstecz</div>
+    <h2 style="font-size:15px;color:#14394d;">Raport ze zdarzenia</h2>
+
+    <label>Zdarzenie</label>
+    <select id="raportEventSelect"></select>
+
+    <label>Rodzaj zdarzenia</label>
+    <input type="text" id="raportRodzaj">
+
+    <label>Opis wg. zgłoszenia</label>
+    <textarea id="raportOpisZgl"></textarea>
+
+    <label>Opis wg. rozpoznania</label>
+    <textarea id="raportOpisRozp"></textarea>
+
+    <label>Zużyte środki</label>
+    <textarea id="raportSrodki"></textarea>
+
+    <label>Informacje o poszkodowanych</label>
+    <textarea id="raportPoszkodowani"></textarea>
+
+    <label>Zastępy na miejscu</label>
+    <input type="text" id="raportZastepy">
+
+    <label>Dowódca</label>
+    <input type="text" id="raportDowodca">
+
+    <label>Czasy operacyjne</label>
+    <input type="text" id="raportCzasy">
+
+    <div style="margin-top:16px;">
+      <button class="btn" onclick="submitRaport()">Wyślij raport do MSK</button>
+    </div>
+    <div id="raportMsg" style="margin-top:10px;font-size:13px;"></div>
+  </div>
+
 </div>
 
 <script>
@@ -142,11 +203,14 @@ function fmtStamp(iso) {
 }
 
 function openScreen(name) {
-  ['menu','zadysponuj','statusy'].forEach(s => {
+  ['menu','zadysponuj','statusy','zmiana','podzial','raport'].forEach(s => {
     document.getElementById('screen-' + s).style.display = (s === name) ? 'block' : 'none';
   });
   if (name === 'zadysponuj') loadVehicleChecks();
   if (name === 'statusy') loadEventSelect();
+  if (name === 'zmiana') loadZmianaScreen();
+  if (name === 'podzial') loadPodzial();
+  if (name === 'raport') loadRaportEventSelect();
 }
 
 async function loadVehicleChecks() {
@@ -252,6 +316,185 @@ function subscribeRealtime() {
       if (document.getElementById('screen-statusy').style.display === 'block') loadEventSelect();
     })
     .subscribe();
+}
+
+// ==========================================================
+// ROZPOCZNIJ / ZAKOŃCZ ZMIANĘ + OBSADA WOZÓW
+// ==========================================================
+async function loadZmianaScreen() {
+  const wrap = document.getElementById('zmianaContent');
+  wrap.innerHTML = 'Ładowanie...';
+
+  const { data: aktywne } = await sb.from('zmiany').select('*').eq('status', 'trwa').order('created_at', { ascending: false }).limit(1);
+  const aktywna = aktywne && aktywne[0];
+
+  if (aktywna) {
+    wrap.innerHTML = `
+      <div class="event-card" style="cursor:default;">
+        <div class="ev-head">Zmiana ${aktywna.numer_zmiany} - ${aktywna.data} (trwa)</div>
+        <div style="font-size:12px;color:#607078;">Dowódca zmiany: ${aktywna.dowodca_zmiany}</div>
+        <div style="font-size:11px;color:#607078;">Rozpoczął: ${aktywna.rozpoczal_imie || ''} ${aktywna.rozpoczal_nazwisko || ''}</div>
+      </div>
+      <button class="btn secondary" onclick="zakonczZmiane('${aktywna.id}')">Zakończ zmianę</button>
+    `;
+    return;
+  }
+
+  const { data: vehicles } = await sb.from('vehicles').select('id,name').order('name');
+  const rows = (vehicles || []).map(v => `
+    <div class="event-card" style="cursor:default;">
+      <div class="ev-head">${v.name}</div>
+      <label>Kierowca</label>
+      <input type="text" class="obsKierowca" data-name="${v.name}">
+      <label>Dowódca</label>
+      <input type="text" class="obsDowodca" data-name="${v.name}">
+      <label>Dowódca 1 Roty</label>
+      <input type="text" class="obsDowodcaR1" data-name="${v.name}">
+      <label>Pomocnik 1 Roty</label>
+      <input type="text" class="obsPomocnikR1" data-name="${v.name}">
+    </div>
+  `).join('');
+
+  wrap.innerHTML = `
+    <label>Data</label>
+    <input type="date" id="zmData" value="${new Date().toISOString().slice(0,10)}">
+    <label>Zmiana (nr)</label>
+    <input type="text" id="zmNumer" placeholder="np. I">
+    <label>Dowódca zmiany</label>
+    <input type="text" id="zmDowodca">
+    <h2 style="font-size:14px;color:#14394d;margin-top:18px;">Obsada wozów</h2>
+    ${rows || '<div class="empty">Brak pojazdów w podziale bojowym.</div>'}
+    <div style="margin-top:16px;">
+      <button class="btn" onclick="rozpocznijZmiane()">Rozpocznij zmianę</button>
+    </div>
+    <div id="zmianaMsg" style="margin-top:10px;font-size:13px;"></div>
+  `;
+}
+
+async function rozpocznijZmiane() {
+  const data = document.getElementById('zmData').value;
+  const numer = document.getElementById('zmNumer').value.trim();
+  const dowodca = document.getElementById('zmDowodca').value.trim();
+  const msgBox = document.getElementById('zmianaMsg');
+  const user = window.swdUser;
+
+  if (!data || !numer || !dowodca) {
+    msgBox.style.color = '#c0392b';
+    msgBox.textContent = 'Wypełnij datę, numer zmiany i dowódcę zmiany.';
+    return;
+  }
+
+  const { data: zm, error } = await sb.from('zmiany').insert({
+    data, numer_zmiany: numer, dowodca_zmiany: dowodca, status: 'trwa',
+    rozpoczal_imie: user ? user.imie : null, rozpoczal_nazwisko: user ? user.nazwisko : null
+  }).select().single();
+
+  if (error) {
+    msgBox.style.color = '#c0392b';
+    msgBox.textContent = 'Błąd zapisu zmiany.';
+    return;
+  }
+
+  const kierowcy = document.querySelectorAll('.obsKierowca');
+  const obsadyRows = Array.from(kierowcy).map(inp => {
+    const name = inp.getAttribute('data-name');
+    const dowodcaEl = document.querySelector(`.obsDowodca[data-name="${name}"]`);
+    const r1El = document.querySelector(`.obsDowodcaR1[data-name="${name}"]`);
+    const p1El = document.querySelector(`.obsPomocnikR1[data-name="${name}"]`);
+    return {
+      zmiana_id: zm.id,
+      pojazd: name,
+      kierowca: inp.value.trim() || null,
+      dowodca: dowodcaEl.value.trim() || null,
+      dowodca_roty1: r1El.value.trim() || null,
+      pomocnik_roty1: p1El.value.trim() || null
+    };
+  });
+
+  if (obsadyRows.length > 0) {
+    await sb.from('obsady').insert(obsadyRows);
+  }
+
+  msgBox.style.color = '#2e7d32';
+  msgBox.textContent = 'Zmiana rozpoczęta.';
+  loadZmianaScreen();
+}
+
+async function zakonczZmiane(id) {
+  if (!confirm('Na pewno zakończyć zmianę?')) return;
+  await sb.from('zmiany').update({ status: 'zakonczona', zakonczona_at: new Date().toISOString() }).eq('id', id);
+  loadZmianaScreen();
+}
+
+// ==========================================================
+// PODZIAŁ BOJOWY
+// ==========================================================
+async function loadPodzial() {
+  const wrap = document.getElementById('podzialList');
+  const { data, error } = await sb.from('vehicles').select('*').order('name');
+  if (error || !data) { wrap.innerHTML = '<div class="empty">Błąd wczytywania pojazdów.</div>'; return; }
+  wrap.innerHTML = data.map(v => `
+    <div class="status-tile-h ${v.active ? 'on' : ''}" style="${v.active ? '' : 'background:#c0392b;border-color:#8e2a20;color:#fff;'}" onclick="togglePojazd('${v.id}', ${v.active})">
+      <div class="label">${v.name}</div>
+      <div class="stamp">${v.active ? 'W dyspozycji' : 'WYŁĄCZONY'}</div>
+    </div>
+  `).join('');
+  wrap.style.display = 'flex';
+  wrap.style.flexWrap = 'wrap';
+  wrap.style.gap = '8px';
+}
+async function togglePojazd(id, currentlyActive) {
+  await sb.from('vehicles').update({ active: !currentlyActive }).eq('id', id);
+  loadPodzial();
+}
+
+// ==========================================================
+// RAPORT ZE ZDARZENIA -> MSK
+// ==========================================================
+async function loadRaportEventSelect() {
+  const sel = document.getElementById('raportEventSelect');
+  const { data, error } = await sb.from('events').select('id, number, name, category').order('created_at', { ascending: false }).limit(50);
+  if (error || !data || data.length === 0) {
+    sel.innerHTML = '<option value="">Brak zdarzeń</option>';
+    return;
+  }
+  sel.innerHTML = data.map(e => `<option value="${e.id}" data-cat="${e.category}">${e.number} - ${e.name} (${e.category})</option>`).join('');
+}
+
+async function submitRaport() {
+  const sel = document.getElementById('raportEventSelect');
+  const opt = sel.options[sel.selectedIndex];
+  const msgBox = document.getElementById('raportMsg');
+
+  if (!opt || !opt.value) {
+    msgBox.style.color = '#c0392b';
+    msgBox.textContent = 'Wybierz zdarzenie.';
+    return;
+  }
+
+  const payload = {
+    event_id: opt.value,
+    kategoria_stat: opt.getAttribute('data-cat'),
+    rodzaj_zdarzenia: document.getElementById('raportRodzaj').value.trim(),
+    opis_zgloszenie: document.getElementById('raportOpisZgl').value.trim(),
+    opis_rozpoznanie: document.getElementById('raportOpisRozp').value.trim(),
+    zuzyte_srodki: document.getElementById('raportSrodki').value.trim(),
+    poszkodowani: document.getElementById('raportPoszkodowani').value.trim(),
+    zastepy: document.getElementById('raportZastepy').value.trim(),
+    dowodca: document.getElementById('raportDowodca').value.trim(),
+    czasy_operacyjne: document.getElementById('raportCzasy').value.trim()
+  };
+
+  const { error } = await sb.from('raporty').insert(payload);
+  if (error) {
+    msgBox.style.color = '#c0392b';
+    msgBox.textContent = 'Błąd wysyłania raportu.';
+    return;
+  }
+  msgBox.style.color = '#2e7d32';
+  msgBox.textContent = 'Raport wysłany do MSK.';
+  ['raportRodzaj','raportOpisZgl','raportOpisRozp','raportSrodki','raportPoszkodowani','raportZastepy','raportDowodca','raportCzasy']
+    .forEach(id => document.getElementById(id).value = '');
 }
 
 // ==========================================================
@@ -399,6 +642,7 @@ async function radioJoinChannel(channelKey) {
   radioSupaChannel = channel;
 }
 
+const PTT_SOUND_SRC = "data:audio/mpeg;base64,//vkRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA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LllWppdflLWWcy6Uw7O1qa/KYzflMMv7LeSp2nKltaXX6tLerRqzqmpqbtWGX9tVZbZ1llvHuNWlpcbkqjVnVrL8fytapqamyKgq/+DUGngqd4lgq4RBwRVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV";
 const radioWidget = document.getElementById('radioWidget');
 const radioChName = document.getElementById('radioChName');
 const radioChNum = document.getElementById('radioChNum');
@@ -487,19 +731,27 @@ document.getElementById('radioChDown').addEventListener('click', () => {
   radioUnlockAllAudio();
 });
 
+const radioPttSound = new Audio(PTT_SOUND_SRC);
+
 function radioStartTransmit() {
   if (!radioOn || radioTransmitting) return;
   radioTransmitting = true;
-  if (radioLocalStream) radioLocalStream.getAudioTracks().forEach(t => t.enabled = true);
   radioWidget.classList.add('transmitting');
   pttBtn.classList.add('active');
   radioStatusLine.classList.add('tx');
   radioStatusLine.textContent = 'NADAJESZ: ' + RADIO_CHANNELS[radioChannelIndex].name;
-  radioUnlockAllAudio();
+  try { radioPttSound.currentTime = 0; radioPttSound.play().catch(() => {}); } catch (e) {}
+  const openMic = () => {
+    if (!radioTransmitting) return;
+    if (radioLocalStream) radioLocalStream.getAudioTracks().forEach(t => t.enabled = true);
+    radioUnlockAllAudio();
+  };
+  radioPttSound.addEventListener('ended', openMic, { once: true });
 }
 function radioStopTransmit() {
   const wasTransmitting = radioTransmitting;
   radioTransmitting = false;
+  try { radioPttSound.pause(); radioPttSound.currentTime = 0; } catch (e) {}
   if (radioLocalStream) radioLocalStream.getAudioTracks().forEach(t => t.enabled = false);
   radioWidget.classList.remove('transmitting');
   pttBtn.classList.remove('active');
