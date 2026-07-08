@@ -92,7 +92,7 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
     return;
   }
 
-  // Krok 1: znajdź techniczny e-mail powiązany z tym imieniem i nazwiskiem.
+  // Krok 1: znajdź techniczny e-mail powiązany z tym imieniem i nazwiskiem
   const { data: profileRows, error: findErr } = await sb
     .from('profiles')
     .select('login_email')
@@ -105,7 +105,7 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
     return;
   }
 
-  // Krok 2: zaloguj przez prawdziwy Supabase Auth.
+  // Krok 2: zaloguj przez Supabase Auth
   const { data: authData, error: authErr } = await sb.auth.signInWithPassword({
     email: profileRows[0].login_email,
     password: haslo
@@ -116,7 +116,7 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
     return;
   }
 
-  // Krok 3: pobierz pełny profil (imię, nazwisko, stopień, rola).
+  // Krok 3: pobierz pełny profil
   const { data: profile, error: profileErr } = await sb
     .from('profiles')
     .select('id, imie, nazwisko, stopien, rola')
@@ -128,12 +128,7 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
     return;
   }
 
-  const data = [profile];
-    showError('Nieprawidłowe imię nazwisko lub hasło.');
-    return;
-  }
-
-  sessionStorage.setItem('swd_user', JSON.stringify(data[0]));
+  sessionStorage.setItem('swd_user', JSON.stringify(profile));
   renderMenu();
 });
 
