@@ -31,7 +31,28 @@
   <div id="guardMsg" class="empty" style="display:none;">Brak dostępu - zaloguj się jako admin.</div>
 
   <div id="adminPanel" style="display:none;">
-    <h2 style="font-size:16px; color:#14394d;">Konta użytkowników</h2>
+
+    <h2 style="font-size:16px; color:#14394d;">Dysponuj z CPR</h2>
+    <div class="add-card">
+      <label>Nazwa zdarzenia</label>
+      <input type="text" id="cprNazwa" placeholder="np. Wypadek drogowy DK25">
+      <label>Adres</label>
+      <input type="text" id="cprAdres" placeholder="Ulica, numer, miejscowość">
+      <label>Opis</label>
+      <textarea id="cprOpis" placeholder="Dodatkowe informacje"></textarea>
+      <label>Kto zadysponowany</label>
+      <div class="checks">
+        <label class="chip"><input type="checkbox" id="cprStraz"> Straż pożarna</label>
+        <label class="chip"><input type="checkbox" id="cprPolicja"> Policja</label>
+        <label class="chip"><input type="checkbox" id="cprRatownictwo"> Ratownictwo medyczne</label>
+      </div>
+      <div style="margin-top:14px;">
+        <button class="btn" id="cprSendBtn">Wyślij do MSK (CPR)</button>
+      </div>
+      <div class="error-text" id="cprMsg" style="display:none;"></div>
+    </div>
+
+    <h2 style="font-size:16px; color:#14394d; margin-top:24px;">Konta użytkowników</h2>
     <table class="acc-table" id="accTable">
       <thead>
         <tr><th>Imię</th><th>Nazwisko</th><th>Stopień</th><th>Rola</th><th></th></tr>
@@ -98,6 +119,47 @@ const STOPNIE = ["strażak","starszy strażak","sekcyjny","starszy sekcyjny","m�
   "młodszy kapitan","kapitan","starszy kapitan","młodszy brygadier","brygadier","starszy brygadier"];
 
 let currentUser = null;
+
+document.getElementById('cprSendBtn').addEventListener('click', async () => {
+  const nazwa = document.getElementById('cprNazwa').value.trim();
+  const adres = document.getElementById('cprAdres').value.trim();
+  const opis = document.getElementById('cprOpis').value.trim();
+  const strazu = document.getElementById('cprStraz').checked;
+  const policja = document.getElementById('cprPolicja').checked;
+  const ratownictwo = document.getElementById('cprRatownictwo').checked;
+  const msgBox = document.getElementById('cprMsg');
+  msgBox.style.display = 'none';
+
+  if (!nazwa) {
+    msgBox.textContent = 'Podaj nazwę zdarzenia.';
+    msgBox.style.display = 'block';
+    return;
+  }
+  if (!strazu && !policja && !ratownictwo) {
+    msgBox.textContent = 'Zaznacz kto ma zostać zadysponowany.';
+    msgBox.style.display = 'block';
+    return;
+  }
+
+  const { error } = await sb.from('cpr_dysponowania').insert({
+    nazwa_zdarzenia: nazwa, adres, opis, strazu, policja, ratownictwo
+  });
+  if (error) {
+    msgBox.textContent = 'Błąd wysyłania do MSK: ' + error.message;
+    msgBox.style.display = 'block';
+    return;
+  }
+
+  document.getElementById('cprNazwa').value = '';
+  document.getElementById('cprAdres').value = '';
+  document.getElementById('cprOpis').value = '';
+  document.getElementById('cprStraz').checked = false;
+  document.getElementById('cprPolicja').checked = false;
+  document.getElementById('cprRatownictwo').checked = false;
+  msgBox.style.color = '#2e7d32';
+  msgBox.textContent = 'Wysłano do MSK.';
+  msgBox.style.display = 'block';
+});
 
 async function initGuard() {
   const { data: sessionData } = await sb.auth.getSession();
