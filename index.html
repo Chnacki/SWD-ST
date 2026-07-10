@@ -1,144 +1,29 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pl">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>SWD PSP - Logowanie</title>
-<link rel="stylesheet" href="style.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js"></script>
+<meta charset="UTF-8">
+<title>Projekt zawieszony</title>
+<style>
+  html, body {
+    height: 100%;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1a1a1a;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  h1 {
+    color: #f2c94c;
+    font-size: 3rem;
+    letter-spacing: 0.05em;
+    text-align: center;
+    text-transform: uppercase;
+    padding: 0 20px;
+  }
+</style>
 </head>
 <body>
-
-<div id="loginView" class="login-wrap">
-  <div class="login-card">
-    <h1>SWD PSP</h1>
-    <p>Zaloguj się swoim ID.</p>
-    <label>Imię</label>
-    <input type="text" id="loginImie" autocomplete="given-name">
-    <label>Nazwisko</label>
-    <input type="text" id="loginNazwisko" autocomplete="family-name">
-    <label>Hasło</label>
-    <input type="password" id="loginHaslo" autocomplete="current-password">
-    <div class="error-text" id="loginError" style="display:none;"></div>
-    <div style="margin-top:16px;">
-      <button class="btn" id="loginBtn">Zaloguj</button>
-    </div>
-  </div>
-</div>
-
-<div id="menuView" class="screen" style="display:none; max-width:520px;">
-  <div class="appbar" style="border-radius:6px; margin-bottom:16px;">
-    <div>
-      <div class="title" id="menuWelcome">Zalogowano</div>
-      <div class="sub" id="menuStopien"></div>
-    </div>
-    <button class="logout" id="logoutBtn">Wyloguj</button>
-  </div>
-
-  <div class="tiles">
-    <div class="tile" onclick="location.href='punkt-alarmowy.html'">
-      <div class="label">Punkt alarmowy 304-10</div>
-    </div>
-    <div class="tile" onclick="location.href='msk.html'">
-      <div class="label">MSK</div>
-    </div>
-    <div class="tile" onclick="location.href='woz.html'">
-      <div class="label">SWD-ST</div>
-    </div>
-    <div class="tile" id="adminTile" style="display:none;" onclick="location.href='komenda.html'">
-      <div class="label">Komenda miejska</div>
-    </div>
-  </div>
-</div>
-
-<script>
-const loginView = document.getElementById('loginView');
-const menuView = document.getElementById('menuView');
-const loginError = document.getElementById('loginError');
-
-function showError(msg) {
-  loginError.textContent = msg;
-  loginError.style.display = 'block';
-}
-
-function getSession() {
-  try { return JSON.parse(sessionStorage.getItem('swd_user') || 'null'); }
-  catch (e) { return null; }
-}
-
-function renderMenu() {
-  const user = getSession();
-  if (!user) {
-    loginView.style.display = 'flex';
-    menuView.style.display = 'none';
-    return;
-  }
-  loginView.style.display = 'none';
-  menuView.style.display = 'block';
-  document.getElementById('menuWelcome').textContent = 'Zalogowano jako: ' + user.imie + ' ' + user.nazwisko;
-  document.getElementById('menuStopien').textContent = user.stopien;
-  document.getElementById('adminTile').style.display = (user.rola === 'admin') ? 'flex' : 'none';
-}
-
-document.getElementById('loginBtn').addEventListener('click', async () => {
-  const imie = document.getElementById('loginImie').value.trim();
-  const nazwisko = document.getElementById('loginNazwisko').value.trim();
-  const haslo = document.getElementById('loginHaslo').value;
-  loginError.style.display = 'none';
-
-  if (!imie || !nazwisko || !haslo) {
-    showError('Wypełnij wszystkie pola.');
-    return;
-  }
-
-  // Krok 1: znajdź techniczny e-mail powiązany z tym imieniem i nazwiskiem.
-  const { data: loginEmail, error: findErr } = await sb.rpc('find_login_email', {
-    p_imie: imie,
-    p_nazwisko: nazwisko
-  });
-
-  if (findErr || !loginEmail) {
-    showError('Nieprawidłowe imię, nazwisko lub hasło.');
-    return;
-  }
-
-  // Krok 2: zaloguj przez prawdziwy Supabase Auth.
-  const { data: authData, error: authErr } = await sb.auth.signInWithPassword({
-    email: loginEmail,
-    password: haslo
-  });
-
-  if (authErr || !authData?.user) {
-    showError('Nieprawidłowe imię, nazwisko lub hasło.');
-    return;
-  }
-
-  // Krok 3: pobierz pełny profil (imię, nazwisko, stopień, rola).
-  const { data: profile, error: profileErr } = await sb
-    .from('profiles')
-    .select('id, imie, nazwisko, stopien, rola')
-    .eq('id', authData.user.id)
-    .single();
-
-  if (profileErr || !profile) {
-    showError('Błąd wczytywania profilu.');
-    return;
-  }
-
-  const data = [profile];
-
-  sessionStorage.setItem('swd_user', JSON.stringify(data[0]));
-  renderMenu();
-});
-
-document.getElementById('logoutBtn').addEventListener('click', async () => {
-  await sb.auth.signOut();
-  sessionStorage.removeItem('swd_user');
-  renderMenu();
-});
-
-renderMenu();
-</script>
+  <h1>Projekt zawieszony</h1>
 </body>
 </html>
