@@ -189,7 +189,7 @@ table.simple th { color: #607078; font-size: 11px; text-transform: uppercase; }
   min-height: 100vh; background: #b9c4ca; gap: 22px; padding: 20px;
 }
 .radio-fullpage-widget {
-  position: relative; width: min(92vw, 460px); aspect-ratio: 1 / 1;
+  position: relative; width: min(92vw, 600px); aspect-ratio: 1 / 1;
   filter: drop-shadow(0 6px 18px rgba(0,0,0,.45));
 }
 .radio-fullpage-widget img {
