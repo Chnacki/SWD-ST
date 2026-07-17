@@ -40,7 +40,7 @@
     <div class="tile" onclick="location.href='punkt-alarmowy.html'">
       <div class="label">Punkt alarmowy 304-10</div>
     </div>
-    <div class="tile" onclick="location.href='msk.html'">
+    <div class="tile" id="mskTile" style="display:none;" onclick="location.href='msk.html'">
       <div class="label">MSK</div>
     </div>
     <div class="tile" onclick="location.href='woz.html'">
@@ -79,6 +79,7 @@ function renderMenu() {
   document.getElementById('menuWelcome').textContent = 'Zalogowano jako: ' + user.imie + ' ' + user.nazwisko;
   document.getElementById('menuStopien').textContent = user.stopien;
   document.getElementById('adminTile').style.display = (user.rola === 'admin') ? 'flex' : 'none';
+  document.getElementById('mskTile').style.display = (user.rola === 'msk' || user.rola === 'admin') ? 'flex' : 'none';
 }
 
 document.getElementById('loginBtn').addEventListener('click', async () => {
