@@ -102,6 +102,7 @@
           <select id="newRola">
             <option value="user">Użytkownik</option>
             <option value="admin">Admin</option>
+            <option value="msk">MSK</option>
           </select>
         </div>
       </div>
@@ -199,16 +200,28 @@ async function loadAccounts() {
       `<option value="${s}" ${s === acc.stopien ? 'selected' : ''}>${s}</option>`
     ).join('');
 
+    const rolaOptions = ['user','admin','msk'].map(r =>
+      `<option value="${r}" ${r === acc.rola ? 'selected' : ''}>${r === 'user' ? 'Użytkownik' : (r === 'admin' ? 'Admin' : 'MSK')}</option>`
+    ).join('');
+
     tr.innerHTML = `
       <td>${acc.imie}</td>
       <td>${acc.nazwisko}</td>
       <td><select data-id="${acc.id}" class="stopienSelect">${stopienOptions}</select></td>
-      <td>${acc.rola}</td>
+      <td><select data-id="${acc.id}" class="rolaSelect">${rolaOptions}</select></td>
       <td>
         <button class="del-btn" data-id="${acc.id}" data-action="usun">Usuń</button>
       </td>
     `;
     tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll('.rolaSelect').forEach(sel => {
+    sel.addEventListener('change', async () => {
+      const id = sel.getAttribute('data-id');
+      const { error } = await sb.rpc('admin_update_rola', { p_profile_id: id, p_rola: sel.value });
+      if (error) alert('Błąd zmiany roli: ' + error.message);
+    });
   });
 
   tbody.querySelectorAll('.stopienSelect').forEach(sel => {
