@@ -487,12 +487,30 @@ async function odbierzCpr(id) {
 
 const cprAlertAudio = new Audio('Nowe_zdarzenie_odbierz.mp3');
 cprAlertAudio.loop = true;
+let cprAudioUnlocked = false;
+
+function unlockCprAudio() {
+  if (cprAudioUnlocked) return;
+  cprAudioUnlocked = true;
+  // "Odblokowanie" audio: krótkie odtworzenie i pauza w reakcji na gest użytkownika,
+  // dzięki temu późniejsze play() wywoływane z callbacku realtime nie zostanie zablokowane.
+  cprAlertAudio.play().then(() => {
+    cprAlertAudio.pause();
+    cprAlertAudio.currentTime = 0;
+  }).catch(() => { cprAudioUnlocked = false; });
+}
+document.addEventListener('click', unlockCprAudio, { once: false });
+document.addEventListener('keydown', unlockCprAudio, { once: false });
+document.addEventListener('touchstart', unlockCprAudio, { once: false });
 
 function startCprAlert() {
   if (cprAlertInterval) return;
   cprAlertInterval = true;
   cprAlertAudio.currentTime = 0;
-  cprAlertAudio.play().catch(() => {});
+  cprAlertAudio.play().catch(err => {
+    console.warn('Nie można odtworzyć dźwięku CPR (prawdopodobnie brak interakcji z dokumentem):', err);
+    cprAudioUnlocked = false;
+  });
 }
 function stopCprAlert() {
   cprAlertInterval = null;
