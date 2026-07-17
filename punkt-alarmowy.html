@@ -173,12 +173,58 @@ if (window.swdUser) {
     <label>Czasy operacyjne</label>
     <input type="text" id="raportCzasy">
 
+    <label>Lokalizacja medyczna</label>
+    <input type="text" id="raportLokMed" placeholder="np. namiot segregacyjny przy wjeździe">
+
+    <label>Lokalizacja pożaru</label>
+    <input type="text" id="raportLokPoz" placeholder="np. hala magazynowa, sektor B">
+
+    <label>Wielkość zdarzenia</label>
+    <div class="tiles" style="grid-template-columns:1fr 1fr;">
+      <div class="tile" id="wzMzTile" onclick="wzOpen('MZ')"><div class="label">MZ</div></div>
+      <div class="tile" id="wzPTile" onclick="wzOpen('P')"><div class="label">P</div></div>
+    </div>
+    <div id="wzMzBox" style="display:none; margin-top:10px;">
+      <label>Wielkość MZ</label>
+      <select id="wzMzSize">
+        <option value="">— wybierz —</option>
+        <option>Małe</option><option>Lokalne</option><option>Średnie</option><option>Duże</option>
+      </select>
+      <label>Metraż akcji (m2)</label>
+      <input type="number" id="wzMzMetraz" min="0">
+    </div>
+    <div id="wzPBox" style="display:none; margin-top:10px;">
+      <label>Wielkość P</label>
+      <select id="wzPSize">
+        <option value="">— wybierz —</option>
+        <option>Małe</option><option>Średnie</option><option>Duże</option><option>Bardzo Duże</option>
+      </select>
+      <label>Metraż akcji (m2)</label>
+      <input type="number" id="wzPMetrazAkcji" min="0">
+      <label>Metraż pożaru (m2)</label>
+      <input type="number" id="wzPMetrazPozaru" min="0">
+    </div>
+
     <div style="margin-top:16px;">
-      <button class="btn" onclick="submitRaport()">Wyślij raport do MSK</button>
+      <button class="btn" id="raportSubmitBtn" onclick="submitRaport()">Wyślij raport do MSK</button>
     </div>
     <div id="raportMsg" style="margin-top:10px;font-size:13px;"></div>
+
+    <h2 style="font-size:14px;color:#14394d;margin-top:24px;">Wysłane raporty</h2>
+    <div id="raportyWyslaneList"></div>
   </div>
 
+</div>
+
+<!-- WYJAŚNIENIE ODRZUCENIA RAPORTU -->
+<div id="wyjasnienieModal" style="display:none; position:fixed; inset:0; background:rgba(15,39,51,.6); z-index:10000; align-items:center; justify-content:center;">
+  <div style="background:#fff; border-radius:8px; padding:18px; width:min(92vw,420px);">
+    <h2 style="font-size:15px;color:#c0392b; margin-top:0;">Powód odrzucenia raportu</h2>
+    <div id="wyjasnienieTekst" style="font-size:13px; color:#1c2b36;"></div>
+    <div style="margin-top:16px;">
+      <button class="btn secondary" onclick="document.getElementById('wyjasnienieModal').style.display='none';">Zamknij</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -210,7 +256,7 @@ function openScreen(name) {
   if (name === 'statusy') loadEventSelect();
   if (name === 'zmiana') loadZmianaScreen();
   if (name === 'podzial') loadPodzial();
-  if (name === 'raport') loadRaportEventSelect();
+  if (name === 'raport') { loadRaportEventSelect(); loadRaportyWyslane(); resetRaportForm(); }
 }
 
 async function loadVehicleChecks() {
@@ -461,6 +507,27 @@ async function loadRaportEventSelect() {
   sel.innerHTML = data.map(e => `<option value="${e.id}" data-cat="${e.category}">${e.number} - ${e.name} (${e.category})</option>`).join('');
 }
 
+let editingRaportId = null;
+
+function resetRaportForm() {
+  editingRaportId = null;
+  document.getElementById('raportSubmitBtn').textContent = 'Wyślij raport do MSK';
+  ['raportRodzaj','raportOpisZgl','raportOpisRozp','raportSrodki','raportPoszkodowani','raportZastepy','raportDowodca','raportCzasy','raportLokMed','raportLokPoz']
+    .forEach(id => document.getElementById(id).value = '');
+  document.getElementById('wzMzBox').style.display = 'none';
+  document.getElementById('wzPBox').style.display = 'none';
+  document.getElementById('wzMzSize').value = '';
+  document.getElementById('wzMzMetraz').value = '';
+  document.getElementById('wzPSize').value = '';
+  document.getElementById('wzPMetrazAkcji').value = '';
+  document.getElementById('wzPMetrazPozaru').value = '';
+}
+
+function wzOpen(kind) {
+  document.getElementById('wzMzBox').style.display = (kind === 'MZ') ? 'block' : 'none';
+  document.getElementById('wzPBox').style.display = (kind === 'P') ? 'block' : 'none';
+}
+
 async function submitRaport() {
   const sel = document.getElementById('raportEventSelect');
   const opt = sel.options[sel.selectedIndex];
@@ -482,19 +549,85 @@ async function submitRaport() {
     poszkodowani: document.getElementById('raportPoszkodowani').value.trim(),
     zastepy: document.getElementById('raportZastepy').value.trim(),
     dowodca: document.getElementById('raportDowodca').value.trim(),
-    czasy_operacyjne: document.getElementById('raportCzasy').value.trim()
+    czasy_operacyjne: document.getElementById('raportCzasy').value.trim(),
+    lokalizacja_medyczna: document.getElementById('raportLokMed').value.trim(),
+    lokalizacja_pozaru: document.getElementById('raportLokPoz').value.trim(),
+    wielkosc_mz: document.getElementById('wzMzBox').style.display === 'block' ? (document.getElementById('wzMzSize').value || null) : null,
+    metraz_mz: document.getElementById('wzMzBox').style.display === 'block' ? (document.getElementById('wzMzMetraz').value || null) : null,
+    wielkosc_p: document.getElementById('wzPBox').style.display === 'block' ? (document.getElementById('wzPSize').value || null) : null,
+    metraz_akcji_p: document.getElementById('wzPBox').style.display === 'block' ? (document.getElementById('wzPMetrazAkcji').value || null) : null,
+    metraz_pozaru_p: document.getElementById('wzPBox').style.display === 'block' ? (document.getElementById('wzPMetrazPozaru').value || null) : null
   };
 
-  const { error } = await sb.from('raporty').insert(payload);
+  let error;
+  if (editingRaportId) {
+    ({ error } = await sb.from('raporty').update(payload).eq('id', editingRaportId));
+  } else {
+    ({ error } = await sb.from('raporty').insert(payload));
+  }
   if (error) {
     msgBox.style.color = '#c0392b';
-    msgBox.textContent = 'Błąd wysyłania raportu.';
+    msgBox.textContent = 'Błąd wysyłania raportu: ' + error.message;
     return;
   }
   msgBox.style.color = '#2e7d32';
-  msgBox.textContent = 'Raport wysłany do MSK.';
-  ['raportRodzaj','raportOpisZgl','raportOpisRozp','raportSrodki','raportPoszkodowani','raportZastepy','raportDowodca','raportCzasy']
-    .forEach(id => document.getElementById(id).value = '');
+  msgBox.textContent = editingRaportId ? 'Raport zaktualizowany - ponownie oczekuje na akceptację MSK.' : 'Raport wysłany do MSK.';
+  resetRaportForm();
+  loadRaportyWyslane();
+}
+
+async function loadRaportyWyslane() {
+  const wrap = document.getElementById('raportyWyslaneList');
+  const { data, error } = await sb.from('raporty').select('*, events(number,name)').order('created_at', { ascending: false }).limit(50);
+  if (error || !data || data.length === 0) { wrap.innerHTML = '<div class="empty">Brak wysłanych raportów.</div>'; return; }
+  wrap.innerHTML = data.map(r => {
+    const bg = r.status === 'przyjety' ? '#d9f3df' : (r.status === 'odrzucony' ? '#fde3e0' : '#eceff1');
+    const border = r.status === 'przyjety' ? '#4caf50' : (r.status === 'odrzucony' ? '#c0392b' : '#b7c6cc');
+    const label = r.status === 'przyjety' ? 'Przyjęty' : (r.status === 'odrzucony' ? 'Odrzucony' : 'Wysłany - w trakcie');
+    return `
+    <div class="event-card" style="cursor:default; background:${bg}; border-color:${border};">
+      <div class="ev-head">${r.rodzaj_zdarzenia || 'Raport'} ${r.events ? '· Zdarzenie ' + r.events.number : ''}</div>
+      <div style="font-size:12px; font-weight:700; margin-bottom:8px;">${label}</div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn" style="width:auto;" onclick="editRaport('${r.id}')">Edytuj raport</button>
+        ${r.status === 'odrzucony' ? `<button class="btn secondary" style="width:auto;" onclick="pokazWyjasnienie('${(r.powod_odrzucenia||'').replace(/'/g,"&#39;")}')">Wyjaśnienie</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function pokazWyjasnienie(tekst) {
+  document.getElementById('wyjasnienieTekst').textContent = tekst || 'Brak podanego powodu.';
+  document.getElementById('wyjasnienieModal').style.display = 'flex';
+}
+
+async function editRaport(id) {
+  const { data: r, error } = await sb.from('raporty').select('*').eq('id', id).single();
+  if (error || !r) { alert('Błąd wczytywania raportu.'); return; }
+  editingRaportId = id;
+  document.getElementById('raportEventSelect').value = r.event_id;
+  document.getElementById('raportRodzaj').value = r.rodzaj_zdarzenia || '';
+  document.getElementById('raportOpisZgl').value = r.opis_zgloszenie || '';
+  document.getElementById('raportOpisRozp').value = r.opis_rozpoznanie || '';
+  document.getElementById('raportSrodki').value = r.zuzyte_srodki || '';
+  document.getElementById('raportPoszkodowani').value = r.poszkodowani || '';
+  document.getElementById('raportZastepy').value = r.zastepy || '';
+  document.getElementById('raportDowodca').value = r.dowodca || '';
+  document.getElementById('raportCzasy').value = r.czasy_operacyjne || '';
+  document.getElementById('raportLokMed').value = r.lokalizacja_medyczna || '';
+  document.getElementById('raportLokPoz').value = r.lokalizacja_pozaru || '';
+  if (r.wielkosc_mz) {
+    wzOpen('MZ');
+    document.getElementById('wzMzSize').value = r.wielkosc_mz || '';
+    document.getElementById('wzMzMetraz').value = r.metraz_mz || '';
+  } else if (r.wielkosc_p) {
+    wzOpen('P');
+    document.getElementById('wzPSize').value = r.wielkosc_p || '';
+    document.getElementById('wzPMetrazAkcji').value = r.metraz_akcji_p || '';
+    document.getElementById('wzPMetrazPozaru').value = r.metraz_pozaru_p || '';
+  }
+  document.getElementById('raportSubmitBtn').textContent = 'Zapisz zmiany raportu';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // ==========================================================
