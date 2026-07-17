@@ -71,6 +71,9 @@ if (window.swdUser) {
       <div class="tile amber" onclick="openScreen('zadysponuj')">
         <div class="label">Stwórz zdarzenie</div>
       </div>
+      <div class="tile" onclick="openScreen('dysponowania')">
+        <div class="label">Lista dysponowań</div>
+      </div>
       <div class="tile" id="cprTile" onclick="openScreen('cpr')">
         <div class="label">CPR</div>
       </div>
@@ -124,6 +127,35 @@ if (window.swdUser) {
       <button class="btn" onclick="submitDispatch()">Zadysponuj</button>
     </div>
     <div id="dispatchMsg" style="margin-top:10px;font-size:13px;"></div>
+  </div>
+
+  <!-- LISTA DYSPONOWAŃ / EDYCJA ZDARZENIA -->
+  <div id="screen-dysponowania" style="display:none;">
+    <div class="backlink" onclick="openScreen('menu')">‹ Wstecz</div>
+    <h2 style="font-size:15px;color:#14394d;">Lista dysponowań</h2>
+    <div id="dysponowaniaList"></div>
+  </div>
+
+  <!-- EDYCJA ZDARZENIA (modal) -->
+  <div id="editEventModal" style="display:none; position:fixed; inset:0; background:rgba(15,39,51,.6); z-index:10000; align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:8px; padding:18px; width:min(92vw,460px); max-height:85vh; overflow:auto;">
+      <h2 style="font-size:15px;color:#14394d; margin-top:0;">Edytuj zdarzenie</h2>
+      <input type="hidden" id="editEventId">
+      <label>Tytuł zdarzenia</label>
+      <input type="text" id="editEvName">
+      <label>Adres</label>
+      <input type="text" id="editEvAddress">
+      <label>Opis</label>
+      <textarea id="editEvDesc"></textarea>
+      <label>Wozy zadysponowane / dodaj kolejne</label>
+      <div class="checks" id="editVehicleChecks"></div>
+      <div style="font-size:11px;color:#607078;margin-top:6px;">Wozy już zadysponowane zachowują swoje czasy operacyjne - odznaczenie ich tutaj nic nie usuwa.</div>
+      <div style="margin-top:16px; display:flex; gap:8px;">
+        <button class="btn" onclick="saveEventEdit()">Zapisz</button>
+        <button class="btn secondary" onclick="closeEditEventModal()">Anuluj</button>
+      </div>
+      <div class="error-text" id="editEventMsg" style="display:none;"></div>
+    </div>
   </div>
 
   <!-- ZDCARZENIA Z KM (112) -->
@@ -212,10 +244,11 @@ function fmtStamp(iso) {
 }
 
 function openScreen(name) {
-  ['menu','zadysponuj','statusy','cpr','alarmowanie','ewidencja','czasy','podzial','raporty'].forEach(s => {
+  ['menu','zadysponuj','dysponowania','statusy','cpr','alarmowanie','ewidencja','czasy','podzial','raporty'].forEach(s => {
     document.getElementById('screen-' + s).style.display = (s === name) ? 'block' : 'none';
   });
   if (name === 'zadysponuj') loadVehicleChecks();
+  if (name === 'dysponowania') loadDysponowania();
   if (name === 'statusy') loadEventSelect();
   if (name === 'cpr') loadCprList();
   if (name === 'alarmowanie') { loadOspSelect(); loadOspHistory(); }
@@ -267,6 +300,86 @@ async function submitDispatch() {
   document.getElementById('evAddress').value = '';
   document.getElementById('evDesc').value = '';
   document.querySelectorAll('.veh-check:checked').forEach(c => c.checked = false);
+}
+
+// ==========================================================
+// MSK - LISTA DYSPONOWAŃ / EDYCJA ZDARZENIA
+// ==========================================================
+async function loadDysponowania() {
+  const wrap = document.getElementById('dysponowaniaList');
+  wrap.innerHTML = 'Ładowanie...';
+  const { data, error } = await sb
+    .from('events')
+    .select('*, dispatches(id, vehicle_id, vehicles(name))')
+    .order('created_at', { ascending: false })
+    .limit(100);
+  if (error || !data || data.length === 0) {
+    wrap.innerHTML = '<div class="empty">Brak zdarzeń.</div>';
+    return;
+  }
+  wrap.innerHTML = data.map(e => `
+    <div class="event-card" style="cursor:default;">
+      <div class="ev-head"><span class="cat">${e.category}</span> Zdarzenie ${e.number} - ${e.name}${e.status === 'zakonczone' ? ' [zakończone]' : ''}</div>
+      <div style="font-size:12px;color:#607078;margin-bottom:6px;">${e.address || ''}</div>
+      <div style="font-size:12px;color:#607078;margin-bottom:8px;">${e.description || ''}</div>
+      <div style="font-size:11px;color:#607078;margin-bottom:8px;">
+        Wozy: ${(e.dispatches || []).map(d => d.vehicles ? d.vehicles.name : '?').join(', ') || '—'}
+      </div>
+      <button class="btn" style="width:auto;" onclick='openEditEvent(${JSON.stringify(e).replace(/'/g, "&#39;")})'>Edytuj zdarzenie</button>
+    </div>
+  `).join('');
+}
+
+async function openEditEvent(ev) {
+  document.getElementById('editEventId').value = ev.id;
+  document.getElementById('editEvName').value = ev.name || '';
+  document.getElementById('editEvAddress').value = ev.address || '';
+  document.getElementById('editEvDesc').value = ev.description || '';
+
+  const alreadyIds = (ev.dispatches || []).map(d => d.vehicle_id);
+  const { data: vehicles } = await sb.from('vehicles').select('id,name').eq('active', true).order('name');
+  const wrap = document.getElementById('editVehicleChecks');
+  wrap.innerHTML = (vehicles || []).map(v => {
+    const already = alreadyIds.includes(v.id);
+    return `<label class="chip"><input type="checkbox" value="${v.id}" class="edit-veh-check" ${already ? 'checked disabled' : ''}> ${v.name}${already ? ' (już w zdarzeniu)' : ''}</label>`;
+  }).join('');
+
+  document.getElementById('editEventMsg').style.display = 'none';
+  document.getElementById('editEventModal').style.display = 'flex';
+}
+
+function closeEditEventModal() {
+  document.getElementById('editEventModal').style.display = 'none';
+}
+
+async function saveEventEdit() {
+  const id = document.getElementById('editEventId').value;
+  const name = document.getElementById('editEvName').value.trim();
+  const address = document.getElementById('editEvAddress').value.trim();
+  const description = document.getElementById('editEvDesc').value.trim();
+  const msgBox = document.getElementById('editEventMsg');
+  msgBox.style.display = 'none';
+
+  if (!name || !address) {
+    msgBox.textContent = 'Podaj nazwę i adres.';
+    msgBox.style.display = 'block';
+    return;
+  }
+
+  const { error: updErr } = await sb.from('events').update({ name, address, description }).eq('id', id);
+  if (updErr) { msgBox.textContent = 'Błąd zapisu zdarzenia: ' + updErr.message; msgBox.style.display = 'block'; return; }
+
+  // Dodajemy TYLKO nowo zaznaczone wozy (te już przypisane są zablokowane w formularzu,
+  // więc ich wiersze w "dispatches" i zapisane czasy operacyjne pozostają nietknięte).
+  const newVehicleIds = [...document.querySelectorAll('.edit-veh-check:checked:not(:disabled)')].map(c => c.value);
+  if (newVehicleIds.length > 0) {
+    const rows = newVehicleIds.map(vid => ({ event_id: id, vehicle_id: vid }));
+    const { error: dErr } = await sb.from('dispatches').insert(rows);
+    if (dErr) { msgBox.textContent = 'Błąd dodawania wozów: ' + dErr.message; msgBox.style.display = 'block'; return; }
+  }
+
+  closeEditEventModal();
+  loadDysponowania();
 }
 
 async function loadEventSelect() {
@@ -336,22 +449,26 @@ let cprChannel = null;
 let cprAlertInterval = null;
 
 async function loadCprList() {
-  const { data, error } = await sb.from('cpr_dysponowania').select('*').eq('odebrane', false).order('created_at');
+  const { data, error } = await sb.from('cpr_dysponowania').select('*').order('created_at', { ascending: false });
   const wrap = document.getElementById('cprList');
   if (error) { wrap.innerHTML = '<div class="empty">Błąd wczytywania.</div>'; return; }
   if (!data || data.length === 0) {
-    wrap.innerHTML = '<div class="empty">Brak nowych dysponowań z CPR.</div>';
+    wrap.innerHTML = '<div class="empty">Brak dysponowań z CPR.</div>';
     return;
   }
   wrap.innerHTML = data.map(d => `
-    <div class="event-card">
+    <div class="event-card" style="position:relative;">
+      <div style="position:absolute; top:8px; right:10px; font-size:11px; font-weight:700; padding:3px 8px; border-radius:10px;
+        ${d.odebrane ? 'background:#d9f3df;color:#2e7d32;' : 'background:#fff3cf;color:#a6750c;'}">
+        ${d.odebrane ? 'Przyjęte' + (d.odebrane_przez ? ' - ' + d.odebrane_przez : '') : 'Oczekuje'}
+      </div>
       <div class="ev-head">${d.nazwa_zdarzenia}</div>
       <div style="font-size:12px;color:#607078;margin-bottom:6px;">${d.adres || ''}</div>
       <div style="font-size:13px;margin-bottom:8px;">${d.opis || ''}</div>
       <div style="font-size:11px;color:#607078;margin-bottom:8px;">
         Zadysponowani: ${[d.strazu?'Straż pożarna':null, d.policja?'Policja':null, d.ratownictwo?'Ratownictwo medyczne':null].filter(Boolean).join(', ') || '—'}
       </div>
-      <button class="btn" onclick="odbierzCpr('${d.id}')">Odbierz zgłoszenie</button>
+      ${d.odebrane ? '' : `<button class="btn" onclick="odbierzCpr('${d.id}')">Odbierz zgłoszenie</button>`}
     </div>
   `).join('');
 }
@@ -360,28 +477,27 @@ async function odbierzCpr(id) {
   const user = window.swdUser;
   await sb.from('cpr_dysponowania').update({
     odebrane: true,
-    odebrane_przez: user ? (user.imie + ' ' + user.nazwisko) : null
+    odebrane_przez: user ? (user.imie + ' ' + user.nazwisko) : null,
+    odebrane_at: new Date().toISOString()
   }).eq('id', id);
   stopCprAlert();
   loadCprList();
   refreshCprBadge();
 }
 
+const cprAlertAudio = new Audio('Nowe_zdarzenie_odbierz.mp3');
+cprAlertAudio.loop = true;
+
 function startCprAlert() {
   if (cprAlertInterval) return;
-  const speak = () => {
-    try {
-      const u = new SpeechSynthesisUtterance('Nowe zdarzenie, odbierz');
-      u.lang = 'pl-PL';
-      speechSynthesis.speak(u);
-    } catch (e) {}
-  };
-  speak();
-  cprAlertInterval = setInterval(speak, 6000);
+  cprAlertInterval = true;
+  cprAlertAudio.currentTime = 0;
+  cprAlertAudio.play().catch(() => {});
 }
 function stopCprAlert() {
-  if (cprAlertInterval) { clearInterval(cprAlertInterval); cprAlertInterval = null; }
-  try { speechSynthesis.cancel(); } catch (e) {}
+  cprAlertInterval = null;
+  cprAlertAudio.pause();
+  cprAlertAudio.currentTime = 0;
 }
 
 async function refreshCprBadge() {
@@ -532,8 +648,18 @@ async function loadRaporty() {
   const wrap = document.getElementById('raportyList');
   const { data, error } = await sb.from('raporty').select('*, events(number,name)').order('created_at', { ascending: false }).limit(50);
   if (error || !data || data.length === 0) { wrap.innerHTML = '<div class="empty">Brak raportów.</div>'; return; }
-  wrap.innerHTML = data.map(r => `
-    <div class="event-card" style="cursor:default;">
+  wrap.innerHTML = data.map(r => {
+    const statusColor = r.status === 'przyjety' ? '#2e7d32' : (r.status === 'odrzucony' ? '#c0392b' : '#607078');
+    const statusBg = r.status === 'przyjety' ? '#d9f3df' : (r.status === 'odrzucony' ? '#fde3e0' : '#eceff1');
+    const statusLabel = r.status === 'przyjety' ? 'Przyjęty' : (r.status === 'odrzucony' ? 'Odrzucony' : 'Wysłany - oczekuje');
+    const wielkosc = r.wielkosc_mz
+      ? `MZ - ${r.wielkosc_mz}${r.metraz_mz ? ' (' + r.metraz_mz + ' m2)' : ''}`
+      : (r.wielkosc_p ? `P - ${r.wielkosc_p}${r.metraz_akcji_p ? ', akcja: ' + r.metraz_akcji_p + ' m2' : ''}${r.metraz_pozaru_p ? ', pożar: ' + r.metraz_pozaru_p + ' m2' : ''}` : '—');
+    return `
+    <div class="event-card" style="cursor:default; position:relative;">
+      <div style="position:absolute; top:8px; right:10px; font-size:11px; font-weight:700; padding:3px 8px; border-radius:10px; color:${statusColor}; background:${statusBg};">
+        ${statusLabel}
+      </div>
       <div class="ev-head"><span class="cat">${r.kategoria_stat || ''}</span> ${r.rodzaj_zdarzenia || ''} ${r.events ? '· Zdarzenie ' + r.events.number : ''}</div>
       <div class="event-cols">
         <div><div class="lbl">Opis wg zgłoszenia</div>${r.opis_zgloszenie || '—'}</div>
@@ -543,9 +669,44 @@ async function loadRaporty() {
         <div><div class="lbl">Zastępy na miejscu</div>${r.zastepy || '—'}</div>
         <div><div class="lbl">Dowódca</div>${r.dowodca || '—'}</div>
         <div><div class="lbl">Czasy operacyjne</div>${r.czasy_operacyjne || '—'}</div>
+        <div><div class="lbl">Wielkość zdarzenia</div>${wielkosc}</div>
+        <div><div class="lbl">Lokalizacja medyczna</div>${r.lokalizacja_medyczna || '—'}</div>
+        <div><div class="lbl">Lokalizacja pożaru</div>${r.lokalizacja_pozaru || '—'}</div>
+      </div>
+      ${r.status === 'odrzucony' && r.powod_odrzucenia ? `<div style="margin-top:8px; font-size:12px; color:#c0392b;"><b>Powód odrzucenia:</b> ${r.powod_odrzucenia}</div>` : ''}
+      <div style="margin-top:12px; display:flex; gap:8px;">
+        <button class="btn" style="width:auto; background:#2e7d32;" onclick="akceptujRaport('${r.id}')" ${r.status === 'przyjety' ? 'disabled' : ''}>Akceptuj raport</button>
+        <button class="btn" style="width:auto; background:#c0392b;" onclick="odrzucRaport('${r.id}')" ${r.status === 'odrzucony' ? 'disabled' : ''}>Odrzuć raport</button>
       </div>
     </div>
-  `).join('');
+  `;}).join('');
+}
+
+async function akceptujRaport(id) {
+  const user = window.swdUser;
+  const { error } = await sb.from('raporty').update({
+    status: 'przyjety',
+    powod_odrzucenia: null,
+    rozpatrzone_przez: user ? (user.imie + ' ' + user.nazwisko) : null,
+    rozpatrzone_at: new Date().toISOString()
+  }).eq('id', id);
+  if (error) { alert('Błąd akceptacji raportu: ' + error.message); return; }
+  loadRaporty();
+}
+
+async function odrzucRaport(id) {
+  const powod = prompt('Podaj przyczynę odrzucenia raportu:');
+  if (powod === null) return;
+  if (!powod.trim()) { alert('Musisz podać przyczynę odrzucenia.'); return; }
+  const user = window.swdUser;
+  const { error } = await sb.from('raporty').update({
+    status: 'odrzucony',
+    powod_odrzucenia: powod.trim(),
+    rozpatrzone_przez: user ? (user.imie + ' ' + user.nazwisko) : null,
+    rozpatrzone_at: new Date().toISOString()
+  }).eq('id', id);
+  if (error) { alert('Błąd odrzucania raportu: ' + error.message); return; }
+  loadRaporty();
 }
 
 async function refreshStatBar() {
